@@ -1,29 +1,27 @@
 //@version=6
 indicator(
-     "EdgeFlow v0.2.0",
+     "EdgeFlow v0.2.1",
      shorttitle="EdgeFlow",
      overlay=true,
-     max_boxes_count=500,
      max_lines_count=500,
      max_labels_count=500)
 
 
 //====================================================
 // EdgeFlow
-// Version : v0.2.0
-// Sprint  : 02
+// Version : v0.2.1
+// Sprint  : 02 HOTFIX
+//
+// Changes:
+// - Intraday liquidity levels
+// - Dotted session levels
+// - Daily reset
+// - NY close cleanup
 //
 // Modules:
 // - EMA Engine
 // - Session Engine
 // - Session Liquidity Engine
-//
-// Future:
-// - Liquidity Sweep
-// - Market Structure
-// - FVG
-// - Order Blocks
-// - Alerts
 //====================================================
 
 
@@ -34,11 +32,12 @@ indicator(
 
 
 
-//====================================================
+//----------------------------------------------------
 // EMA ENGINE
-//====================================================
+//----------------------------------------------------
 
 groupEMA = "📈 EMA Engine"
+
 
 
 showEMA10 = input.bool(
@@ -47,10 +46,12 @@ showEMA10 = input.bool(
      group=groupEMA)
 
 
+
 showEMA21 = input.bool(
      true,
      "Mostrar EMA 21",
      group=groupEMA)
+
 
 
 showEMA200 = input.bool(
@@ -66,10 +67,12 @@ ema10Color = input.color(
      group=groupEMA)
 
 
+
 ema21Color = input.color(
      color.blue,
      "Color EMA 21",
      group=groupEMA)
+
 
 
 ema200Color = input.color(
@@ -79,25 +82,9 @@ ema200Color = input.color(
 
 
 
-ema10Width = input.int(
+emaWidth = input.int(
      2,
-     "Grosor EMA 10",
-     minval=1,
-     maxval=5,
-     group=groupEMA)
-
-
-ema21Width = input.int(
-     2,
-     "Grosor EMA 21",
-     minval=1,
-     maxval=5,
-     group=groupEMA)
-
-
-ema200Width = input.int(
-     3,
-     "Grosor EMA 200",
+     "Grosor EMA",
      minval=1,
      maxval=5,
      group=groupEMA)
@@ -105,11 +92,12 @@ ema200Width = input.int(
 
 
 //====================================================
-// SESSION ENGINE SETTINGS
+// SESSION ENGINE
 //====================================================
 
 
 groupSession = "🌎 Session Engine"
+
 
 
 sessionTimezone = input.string(
@@ -119,10 +107,13 @@ sessionTimezone = input.string(
 
 
 
+// Asia
+
 showAsia = input.bool(
      true,
      "Mostrar Asia",
      group=groupSession)
+
 
 
 asiaSession = input.session(
@@ -132,10 +123,13 @@ asiaSession = input.session(
 
 
 
+// Londres
+
 showLondon = input.bool(
      true,
      "Mostrar Londres",
      group=groupSession)
+
 
 
 londonSession = input.session(
@@ -145,10 +139,13 @@ londonSession = input.session(
 
 
 
+// Nueva York
+
 showNY = input.bool(
      true,
      "Mostrar Nueva York",
      group=groupSession)
+
 
 
 nySession = input.session(
@@ -158,17 +155,19 @@ nySession = input.session(
 
 
 
+
 //====================================================
-// LIQUIDITY ENGINE SETTINGS
+// LIQUIDITY ENGINE
 //====================================================
 
 
 groupLiquidity = "💧 Session Liquidity Engine"
 
 
-showLiquidityLevels = input.bool(
+
+showLiquidity = input.bool(
      true,
-     "Mostrar High / Low sesiones",
+     "Mostrar High / Low",
      group=groupLiquidity)
 
 
@@ -180,12 +179,20 @@ showLabels = input.bool(
 
 
 
-maxHistoricalDays = input.int(
-     20,
-     "Máximo días históricos",
-     minval=5,
-     maxval=100,
+lineWidth = input.int(
+     1,
+     "Grosor líneas",
+     minval=1,
+     maxval=3,
      group=groupLiquidity)
+
+
+
+showHistorical = input.bool(
+     false,
+     "Mantener histórico",
+     group=groupLiquidity)
+
 
 
 //====================================================
@@ -203,34 +210,32 @@ ema200 = ta.ema(close,200)
 
 plot(
      showEMA10 ? ema10 : na,
-     title="EMA 10",
+     "EMA 10",
      color=ema10Color,
-     linewidth=ema10Width)
+     linewidth=emaWidth)
 
 
 
 plot(
      showEMA21 ? ema21 : na,
-     title="EMA 21",
+     "EMA 21",
      color=ema21Color,
-     linewidth=ema21Width)
+     linewidth=emaWidth)
 
 
 
 plot(
      showEMA200 ? ema200 : na,
-     title="EMA 200",
+     "EMA 200",
      color=ema200Color,
-     linewidth=ema200Width)
+     linewidth=emaWidth)
 
 
 
 //====================================================
-// SESSION ENGINE
+// SESSION DETECTION
 //====================================================
 
-
-// Detectar sesiones activas
 
 inAsia = not na(
      time(
@@ -255,43 +260,17 @@ inNY = not na(
 
 
 //====================================================
-// SESSION LIQUIDITY ENGINE
+// NEW DAY CONTROL
 //====================================================
 
 
-//-------------------------
-// ASIA VARIABLES
-//-------------------------
-
-var float asiaHigh = na
-var float asiaLow = na
-
-var int asiaStart = na
-
-
-//-------------------------
-// LONDON VARIABLES
-//-------------------------
-
-var float londonHigh = na
-var float londonLow = na
-
-var int londonStart = na
-
-
-//-------------------------
-// NEW YORK VARIABLES
-//-------------------------
-
-var float nyHigh = na
-var float nyLow = na
-
-var int nyStart = na
+newDay = ta.change(
+     time("D")) != 0
 
 
 
 //====================================================
-// RESET AND CAPTURE SESSIONS
+// SESSION VARIABLES
 //====================================================
 
 
@@ -300,6 +279,57 @@ var int nyStart = na
 // ASIA
 //-------------------------
 
+var float asiaHigh = na
+var float asiaLow = na
+
+var int asiaStartBar = na
+
+
+
+//-------------------------
+// LONDON
+//-------------------------
+
+var float londonHigh = na
+var float londonLow = na
+
+var int londonStartBar = na
+
+
+
+//-------------------------
+// NEW YORK
+//-------------------------
+
+var float nyHigh = na
+var float nyLow = na
+
+var int nyStartBar = na
+
+
+
+//====================================================
+// RESET DAILY VALUES
+//====================================================
+
+
+if newDay and not showHistorical
+
+    asiaHigh := na
+    asiaLow := na
+
+    londonHigh := na
+    londonLow := na
+
+    nyHigh := na
+    nyLow := na
+
+
+
+//====================================================
+// CAPTURE ASIA
+//====================================================
+
 
 if showAsia
 
@@ -307,7 +337,7 @@ if showAsia
 
         asiaHigh := high
         asiaLow := low
-        asiaStart := bar_index
+        asiaStartBar := bar_index
 
 
     if inAsia
@@ -323,9 +353,9 @@ if showAsia
 
 
 
-//-------------------------
-// LONDON
-//-------------------------
+//====================================================
+// CAPTURE LONDON
+//====================================================
 
 
 if showLondon
@@ -334,7 +364,7 @@ if showLondon
 
         londonHigh := high
         londonLow := low
-        londonStart := bar_index
+        londonStartBar := bar_index
 
 
     if inLondon
@@ -350,10 +380,9 @@ if showLondon
 
 
 
-
-//-------------------------
-// NEW YORK
-//-------------------------
+//====================================================
+// CAPTURE NEW YORK
+//====================================================
 
 
 if showNY
@@ -362,7 +391,7 @@ if showNY
 
         nyHigh := high
         nyLow := low
-        nyStart := bar_index
+        nyStartBar := bar_index
 
 
     if inNY
@@ -379,166 +408,190 @@ if showNY
 
 
 //====================================================
-// SESSION COMPLETE FLAGS
+// SESSION CLOSE EVENTS
 //====================================================
 
 
-asiaCompleted = not inAsia and inAsia[1]
+asiaFinished = not inAsia and inAsia[1]
 
-londonCompleted = not inLondon and inLondon[1]
+londonFinished = not inLondon and inLondon[1]
 
-nyCompleted = not inNY and inNY[1]
-
-
-
-//====================================================
-// LIQUIDITY VISUAL ENGINE
-//====================================================
-
-
-// Arrays para guardar históricos
-
-var line[] asiaHighLines = array.new_line()
-var line[] asiaLowLines = array.new_line()
-
-var line[] londonHighLines = array.new_line()
-var line[] londonLowLines = array.new_line()
-
-var line[] nyHighLines = array.new_line()
-var line[] nyLowLines = array.new_line()
-
-
-
-var label[] liquidityLabels = array.new_label()
+nyFinished = not inNY and inNY[1]
 
 
 
 //====================================================
-// CREACIÓN DE NIVELES HISTÓRICOS
+// LIQUIDITY VISUAL ENGINE v0.2.1
+//====================================================
+
+
+// Variables de líneas actuales
+
+var line asiaHighLine = na
+var line asiaLowLine = na
+
+var line londonHighLine = na
+var line londonLowLine = na
+
+var line nyHighLine = na
+var line nyLowLine = na
+
+
+
+// Etiquetas
+
+var label asiaHighLabel = na
+var label asiaLowLabel = na
+
+var label londonHighLabel = na
+var label londonLowLabel = na
+
+var label nyHighLabel = na
+var label nyLowLabel = na
+
+
+
+//====================================================
+// DAILY CLEANUP
+//====================================================
+
+
+if newDay and not showHistorical
+
+    if not na(asiaHighLine)
+        line.delete(asiaHighLine)
+
+    if not na(asiaLowLine)
+        line.delete(asiaLowLine)
+
+
+    if not na(londonHighLine)
+        line.delete(londonHighLine)
+
+    if not na(londonLowLine)
+        line.delete(londonLowLine)
+
+
+    if not na(nyHighLine)
+        line.delete(nyHighLine)
+
+    if not na(nyLowLine)
+        line.delete(nyLowLine)
+
+
+
+    if not na(asiaHighLabel)
+        label.delete(asiaHighLabel)
+
+    if not na(asiaLowLabel)
+        label.delete(asiaLowLabel)
+
+
+    if not na(londonHighLabel)
+        label.delete(londonHighLabel)
+
+    if not na(londonLowLabel)
+        label.delete(londonLowLabel)
+
+
+    if not na(nyHighLabel)
+        label.delete(nyHighLabel)
+
+    if not na(nyLowLabel)
+        label.delete(nyLowLabel)
+
+
+
+//====================================================
+// CREATE SESSION LEVELS
 //====================================================
 
 
 
 //-------------------------
-// ASIA LEVELS
+// ASIA
 //-------------------------
 
 
-if asiaCompleted and showLiquidityLevels
+if asiaFinished and showLiquidity
 
-    highLine = line.new(
-         asiaStart,
+    asiaHighLine := line.new(
+         asiaStartBar,
          asiaHigh,
          bar_index,
          asiaHigh,
-         extend=extend.right,
          color=color.blue,
-         width=1)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
-    lowLine = line.new(
-         asiaStart,
+    asiaLowLine := line.new(
+         asiaStartBar,
          asiaLow,
          bar_index,
          asiaLow,
-         extend=extend.right,
          color=color.blue,
-         width=1)
-
-
-
-    array.push(
-         asiaHighLines,
-         highLine)
-
-
-    array.push(
-         asiaLowLines,
-         lowLine)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
 
     if showLabels
 
-        labelHigh = label.new(
+        asiaHighLabel := label.new(
              bar_index,
              asiaHigh,
              "Asia High",
-             style=label.style_label_left,
-             textcolor=color.white)
+             style=label.style_label_left)
 
 
-        labelLow = label.new(
+        asiaLowLabel := label.new(
              bar_index,
              asiaLow,
              "Asia Low",
-             style=label.style_label_left,
-             textcolor=color.white)
-
-
-
-        array.push(
-             liquidityLabels,
-             labelHigh)
-
-
-        array.push(
-             liquidityLabels,
-             labelLow)
-
+             style=label.style_label_left)
 
 
 
 
 //-------------------------
-// LONDON LEVELS
+// LONDON
 //-------------------------
 
 
-if londonCompleted and showLiquidityLevels
+if londonFinished and showLiquidity
 
-    highLine = line.new(
-         londonStart,
+    londonHighLine := line.new(
+         londonStartBar,
          londonHigh,
          bar_index,
          londonHigh,
-         extend=extend.right,
          color=color.green,
-         width=1)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
-    lowLine = line.new(
-         londonStart,
+    londonLowLine := line.new(
+         londonStartBar,
          londonLow,
          bar_index,
          londonLow,
-         extend=extend.right,
          color=color.green,
-         width=1)
-
-
-
-    array.push(
-         londonHighLines,
-         highLine)
-
-
-    array.push(
-         londonLowLines,
-         lowLine)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
 
     if showLabels
 
-        labelHigh = label.new(
+        londonHighLabel := label.new(
              bar_index,
              londonHigh,
              "London High",
              style=label.style_label_left)
 
 
-        labelLow = label.new(
+        londonLowLabel := label.new(
              bar_index,
              londonLow,
              "London Low",
@@ -546,68 +599,45 @@ if londonCompleted and showLiquidityLevels
 
 
 
-        array.push(
-             liquidityLabels,
-             labelHigh)
-
-
-        array.push(
-             liquidityLabels,
-             labelLow)
-
-
-
-
 
 //-------------------------
-// NEW YORK LEVELS
+// NEW YORK
 //-------------------------
 
 
-if nyCompleted and showLiquidityLevels
+if nyFinished and showLiquidity
 
-    highLine = line.new(
-         nyStart,
+    nyHighLine := line.new(
+         nyStartBar,
          nyHigh,
          bar_index,
          nyHigh,
-         extend=extend.right,
          color=color.red,
-         width=1)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
-    lowLine = line.new(
-         nyStart,
+    nyLowLine := line.new(
+         nyStartBar,
          nyLow,
          bar_index,
          nyLow,
-         extend=extend.right,
          color=color.red,
-         width=1)
-
-
-
-    array.push(
-         nyHighLines,
-         highLine)
-
-
-    array.push(
-         nyLowLines,
-         lowLine)
+         style=line.style_dotted,
+         width=lineWidth)
 
 
 
     if showLabels
 
-        labelHigh = label.new(
+        nyHighLabel := label.new(
              bar_index,
              nyHigh,
              "NY High",
              style=label.style_label_left)
 
 
-        labelLow = label.new(
+        nyLowLabel := label.new(
              bar_index,
              nyLow,
              "NY Low",
@@ -615,59 +645,28 @@ if nyCompleted and showLiquidityLevels
 
 
 
-        array.push(
-             liquidityLabels,
-             labelHigh)
+//====================================================
+// EXTEND LEVELS DURING NY SESSION
+//====================================================
 
 
-        array.push(
-             liquidityLabels,
-             labelLow)
+if inNY and showLiquidity
 
+    if not na(asiaHighLine)
+        line.set_x2(asiaHighLine, bar_index)
+
+    if not na(asiaLowLine)
+        line.set_x2(asiaLowLine, bar_index)
+
+
+    if not na(londonHighLine)
+        line.set_x2(londonHighLine, bar_index)
+
+    if not na(londonLowLine)
+        line.set_x2(londonLowLine, bar_index)
 
 
 
 //====================================================
-// HISTORICAL LIMIT CONTROL
-//====================================================
-
-
-while array.size(asiaHighLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(asiaHighLines))
-
-
-while array.size(asiaLowLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(asiaLowLines))
-
-
-while array.size(londonHighLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(londonHighLines))
-
-
-while array.size(londonLowLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(londonLowLines))
-
-
-while array.size(nyHighLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(nyHighLines))
-
-
-while array.size(nyLowLines) > maxHistoricalDays
-
-    line.delete(
-         array.shift(nyLowLines))
-
-
-//====================================================
-// END EDGEFLOW v0.2.0
+// END EDGEFLOW v0.2.1
 //====================================================
