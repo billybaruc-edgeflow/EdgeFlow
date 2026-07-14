@@ -1,2 +1,3 @@
 //@version=6
 indicator("EdgeFlow", overlay=true)
+commit Versión inicial de EdgeFlow
