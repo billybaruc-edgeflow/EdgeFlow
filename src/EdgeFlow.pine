@@ -1,6 +1,6 @@
 //@version=6
 indicator(
-     "EdgeFlow v0.1.0",
+     "EdgeFlow v0.2.0",
      shorttitle="EdgeFlow",
      overlay=true,
      max_boxes_count=500,
@@ -10,15 +10,16 @@ indicator(
 
 //====================================================
 // EdgeFlow
-// Version : v0.1.0
-// Sprint  : 01
+// Version : v0.2.0
+// Sprint  : 02
 //
 // Modules:
 // - EMA Engine
 // - Session Engine
+// - Session Liquidity Engine
 //
 // Future:
-// - Liquidity
+// - Liquidity Sweep
 // - Market Structure
 // - FVG
 // - Order Blocks
@@ -32,9 +33,10 @@ indicator(
 //====================================================
 
 
-//----------------------------------------------------
+
+//====================================================
 // EMA ENGINE
-//----------------------------------------------------
+//====================================================
 
 groupEMA = "📈 EMA Engine"
 
@@ -55,6 +57,7 @@ showEMA200 = input.bool(
      true,
      "Mostrar EMA 200",
      group=groupEMA)
+
 
 
 ema10Color = input.color(
@@ -100,21 +103,21 @@ ema200Width = input.int(
      group=groupEMA)
 
 
-//----------------------------------------------------
-// SESSION ENGINE
-//----------------------------------------------------
+
+//====================================================
+// SESSION ENGINE SETTINGS
+//====================================================
+
 
 groupSession = "🌎 Session Engine"
 
 
-timezone = input.string(
+sessionTimezone = input.string(
      "America/New_York",
      "Zona horaria",
      group=groupSession)
 
 
-
-// Asia
 
 showAsia = input.bool(
      true,
@@ -128,14 +131,6 @@ asiaSession = input.session(
      group=groupSession)
 
 
-asiaColor = input.color(
-     color.new(color.blue,85),
-     "Color Asia",
-     group=groupSession)
-
-
-
-// Londres
 
 showLondon = input.bool(
      true,
@@ -149,14 +144,6 @@ londonSession = input.session(
      group=groupSession)
 
 
-londonColor = input.color(
-     color.new(color.green,85),
-     "Color Londres",
-     group=groupSession)
-
-
-
-// Nueva York
 
 showNY = input.bool(
      true,
@@ -170,10 +157,35 @@ nySession = input.session(
      group=groupSession)
 
 
-nyColor = input.color(
-     color.new(color.red,85),
-     "Color Nueva York",
-     group=groupSession)
+
+//====================================================
+// LIQUIDITY ENGINE SETTINGS
+//====================================================
+
+
+groupLiquidity = "💧 Session Liquidity Engine"
+
+
+showLiquidityLevels = input.bool(
+     true,
+     "Mostrar High / Low sesiones",
+     group=groupLiquidity)
+
+
+
+showLabels = input.bool(
+     true,
+     "Mostrar etiquetas",
+     group=groupLiquidity)
+
+
+
+maxHistoricalDays = input.int(
+     20,
+     "Máximo días históricos",
+     minval=5,
+     maxval=100,
+     group=groupLiquidity)
 
 
 //====================================================
@@ -191,21 +203,23 @@ ema200 = ta.ema(close,200)
 
 plot(
      showEMA10 ? ema10 : na,
-     "EMA 10",
+     title="EMA 10",
      color=ema10Color,
      linewidth=ema10Width)
 
 
+
 plot(
      showEMA21 ? ema21 : na,
-     "EMA 21",
+     title="EMA 21",
      color=ema21Color,
      linewidth=ema21Width)
 
 
+
 plot(
      showEMA200 ? ema200 : na,
-     "EMA 200",
+     title="EMA 200",
      color=ema200Color,
      linewidth=ema200Width)
 
@@ -216,36 +230,69 @@ plot(
 //====================================================
 
 
+// Detectar sesiones activas
+
 inAsia = not na(
      time(
           timeframe.period,
           asiaSession,
-          timezone))
+          sessionTimezone))
 
 
 inLondon = not na(
      time(
           timeframe.period,
           londonSession,
-          timezone))
+          sessionTimezone))
 
 
 inNY = not na(
      time(
           timeframe.period,
           nySession,
-          timezone))
+          sessionTimezone))
 
 
 
 //====================================================
-// SESSION BOX ENGINE
+// SESSION LIQUIDITY ENGINE
 //====================================================
 
 
-var box asiaBox = na
-var box londonBox = na
-var box nyBox = na
+//-------------------------
+// ASIA VARIABLES
+//-------------------------
+
+var float asiaHigh = na
+var float asiaLow = na
+
+var int asiaStart = na
+
+
+//-------------------------
+// LONDON VARIABLES
+//-------------------------
+
+var float londonHigh = na
+var float londonLow = na
+
+var int londonStart = na
+
+
+//-------------------------
+// NEW YORK VARIABLES
+//-------------------------
+
+var float nyHigh = na
+var float nyLow = na
+
+var int nyStart = na
+
+
+
+//====================================================
+// RESET AND CAPTURE SESSIONS
+//====================================================
 
 
 
@@ -253,31 +300,26 @@ var box nyBox = na
 // ASIA
 //-------------------------
 
-if showAsia and inAsia and not inAsia[1]
 
-    asiaBox := box.new(
-         bar_index,
-         high,
-         bar_index,
-         low,
-         bgcolor=asiaColor,
-         border_color=color.blue)
+if showAsia
 
+    if inAsia and not inAsia[1]
+
+        asiaHigh := high
+        asiaLow := low
+        asiaStart := bar_index
 
 
-if showAsia and inAsia
+    if inAsia
 
-    box.set_right(
-         asiaBox,
-         bar_index)
+        asiaHigh := math.max(
+             asiaHigh,
+             high)
 
-    box.set_top(
-         asiaBox,
-         math.max(box.get_top(asiaBox),high))
 
-    box.set_bottom(
-         asiaBox,
-         math.min(box.get_bottom(asiaBox),low))
+        asiaLow := math.min(
+             asiaLow,
+             low)
 
 
 
@@ -285,31 +327,27 @@ if showAsia and inAsia
 // LONDON
 //-------------------------
 
-if showLondon and inLondon and not inLondon[1]
 
-    londonBox := box.new(
-         bar_index,
-         high,
-         bar_index,
-         low,
-         bgcolor=londonColor,
-         border_color=color.green)
+if showLondon
 
+    if inLondon and not inLondon[1]
+
+        londonHigh := high
+        londonLow := low
+        londonStart := bar_index
 
 
-if showLondon and inLondon
+    if inLondon
 
-    box.set_right(
-         londonBox,
-         bar_index)
+        londonHigh := math.max(
+             londonHigh,
+             high)
 
-    box.set_top(
-         londonBox,
-         math.max(box.get_top(londonBox),high))
 
-    box.set_bottom(
-         londonBox,
-         math.min(box.get_bottom(londonBox),low))
+        londonLow := math.min(
+             londonLow,
+             low)
+
 
 
 
@@ -317,34 +355,319 @@ if showLondon and inLondon
 // NEW YORK
 //-------------------------
 
-if showNY and inNY and not inNY[1]
 
-    nyBox := box.new(
-         bar_index,
-         high,
-         bar_index,
-         low,
-         bgcolor=nyColor,
-         border_color=color.red)
+if showNY
 
+    if inNY and not inNY[1]
+
+        nyHigh := high
+        nyLow := low
+        nyStart := bar_index
 
 
-if showNY and inNY
+    if inNY
 
-    box.set_right(
-         nyBox,
-         bar_index)
+        nyHigh := math.max(
+             nyHigh,
+             high)
 
-    box.set_top(
-         nyBox,
-         math.max(box.get_top(nyBox),high))
 
-    box.set_bottom(
-         nyBox,
-         math.min(box.get_bottom(nyBox),low))
+        nyLow := math.min(
+             nyLow,
+             low)
 
 
 
 //====================================================
-// END EDGEFLOW v0.1.0
+// SESSION COMPLETE FLAGS
+//====================================================
+
+
+asiaCompleted = not inAsia and inAsia[1]
+
+londonCompleted = not inLondon and inLondon[1]
+
+nyCompleted = not inNY and inNY[1]
+
+
+
+//====================================================
+// LIQUIDITY VISUAL ENGINE
+//====================================================
+
+
+// Arrays para guardar históricos
+
+var line[] asiaHighLines = array.new_line()
+var line[] asiaLowLines = array.new_line()
+
+var line[] londonHighLines = array.new_line()
+var line[] londonLowLines = array.new_line()
+
+var line[] nyHighLines = array.new_line()
+var line[] nyLowLines = array.new_line()
+
+
+
+var label[] liquidityLabels = array.new_label()
+
+
+
+//====================================================
+// CREACIÓN DE NIVELES HISTÓRICOS
+//====================================================
+
+
+
+//-------------------------
+// ASIA LEVELS
+//-------------------------
+
+
+if asiaCompleted and showLiquidityLevels
+
+    highLine = line.new(
+         asiaStart,
+         asiaHigh,
+         bar_index,
+         asiaHigh,
+         extend=extend.right,
+         color=color.blue,
+         width=1)
+
+
+    lowLine = line.new(
+         asiaStart,
+         asiaLow,
+         bar_index,
+         asiaLow,
+         extend=extend.right,
+         color=color.blue,
+         width=1)
+
+
+
+    array.push(
+         asiaHighLines,
+         highLine)
+
+
+    array.push(
+         asiaLowLines,
+         lowLine)
+
+
+
+    if showLabels
+
+        labelHigh = label.new(
+             bar_index,
+             asiaHigh,
+             "Asia High",
+             style=label.style_label_left,
+             textcolor=color.white)
+
+
+        labelLow = label.new(
+             bar_index,
+             asiaLow,
+             "Asia Low",
+             style=label.style_label_left,
+             textcolor=color.white)
+
+
+
+        array.push(
+             liquidityLabels,
+             labelHigh)
+
+
+        array.push(
+             liquidityLabels,
+             labelLow)
+
+
+
+
+
+//-------------------------
+// LONDON LEVELS
+//-------------------------
+
+
+if londonCompleted and showLiquidityLevels
+
+    highLine = line.new(
+         londonStart,
+         londonHigh,
+         bar_index,
+         londonHigh,
+         extend=extend.right,
+         color=color.green,
+         width=1)
+
+
+    lowLine = line.new(
+         londonStart,
+         londonLow,
+         bar_index,
+         londonLow,
+         extend=extend.right,
+         color=color.green,
+         width=1)
+
+
+
+    array.push(
+         londonHighLines,
+         highLine)
+
+
+    array.push(
+         londonLowLines,
+         lowLine)
+
+
+
+    if showLabels
+
+        labelHigh = label.new(
+             bar_index,
+             londonHigh,
+             "London High",
+             style=label.style_label_left)
+
+
+        labelLow = label.new(
+             bar_index,
+             londonLow,
+             "London Low",
+             style=label.style_label_left)
+
+
+
+        array.push(
+             liquidityLabels,
+             labelHigh)
+
+
+        array.push(
+             liquidityLabels,
+             labelLow)
+
+
+
+
+
+//-------------------------
+// NEW YORK LEVELS
+//-------------------------
+
+
+if nyCompleted and showLiquidityLevels
+
+    highLine = line.new(
+         nyStart,
+         nyHigh,
+         bar_index,
+         nyHigh,
+         extend=extend.right,
+         color=color.red,
+         width=1)
+
+
+    lowLine = line.new(
+         nyStart,
+         nyLow,
+         bar_index,
+         nyLow,
+         extend=extend.right,
+         color=color.red,
+         width=1)
+
+
+
+    array.push(
+         nyHighLines,
+         highLine)
+
+
+    array.push(
+         nyLowLines,
+         lowLine)
+
+
+
+    if showLabels
+
+        labelHigh = label.new(
+             bar_index,
+             nyHigh,
+             "NY High",
+             style=label.style_label_left)
+
+
+        labelLow = label.new(
+             bar_index,
+             nyLow,
+             "NY Low",
+             style=label.style_label_left)
+
+
+
+        array.push(
+             liquidityLabels,
+             labelHigh)
+
+
+        array.push(
+             liquidityLabels,
+             labelLow)
+
+
+
+
+//====================================================
+// HISTORICAL LIMIT CONTROL
+//====================================================
+
+
+while array.size(asiaHighLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(asiaHighLines))
+
+
+while array.size(asiaLowLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(asiaLowLines))
+
+
+while array.size(londonHighLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(londonHighLines))
+
+
+while array.size(londonLowLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(londonLowLines))
+
+
+while array.size(nyHighLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(nyHighLines))
+
+
+while array.size(nyLowLines) > maxHistoricalDays
+
+    line.delete(
+         array.shift(nyLowLines))
+
+
+//====================================================
+// END EDGEFLOW v0.2.0
 //====================================================
