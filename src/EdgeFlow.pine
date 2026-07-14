@@ -12,21 +12,29 @@ indicator(
 // EdgeFlow
 // Version : v0.1.0
 // Sprint  : 01
-// Description:
-// Base architecture
-// EMA Engine
-// Future modules:
-// Sessions / Liquidity / Structure / FVG / OB
+//
+// Modules:
+// - EMA Engine
+// - Session Engine
+//
+// Future:
+// - Liquidity
+// - Market Structure
+// - FVG
+// - Order Blocks
+// - Alerts
 //====================================================
+
 
 
 //====================================================
 // INPUTS
 //====================================================
 
-//-------------------------
-// EMA SETTINGS
-//-------------------------
+
+//----------------------------------------------------
+// EMA ENGINE
+//----------------------------------------------------
 
 groupEMA = "📈 EMA Engine"
 
@@ -47,7 +55,6 @@ showEMA200 = input.bool(
      true,
      "Mostrar EMA 200",
      group=groupEMA)
-
 
 
 ema10Color = input.color(
@@ -93,48 +100,251 @@ ema200Width = input.int(
      group=groupEMA)
 
 
+//----------------------------------------------------
+// SESSION ENGINE
+//----------------------------------------------------
+
+groupSession = "🌎 Session Engine"
+
+
+timezone = input.string(
+     "America/New_York",
+     "Zona horaria",
+     group=groupSession)
+
+
+
+// Asia
+
+showAsia = input.bool(
+     true,
+     "Mostrar Asia",
+     group=groupSession)
+
+
+asiaSession = input.session(
+     "0000-0900",
+     "Horario Asia",
+     group=groupSession)
+
+
+asiaColor = input.color(
+     color.new(color.blue,85),
+     "Color Asia",
+     group=groupSession)
+
+
+
+// Londres
+
+showLondon = input.bool(
+     true,
+     "Mostrar Londres",
+     group=groupSession)
+
+
+londonSession = input.session(
+     "0800-1700",
+     "Horario Londres",
+     group=groupSession)
+
+
+londonColor = input.color(
+     color.new(color.green,85),
+     "Color Londres",
+     group=groupSession)
+
+
+
+// Nueva York
+
+showNY = input.bool(
+     true,
+     "Mostrar Nueva York",
+     group=groupSession)
+
+
+nySession = input.session(
+     "0930-1600",
+     "Horario Nueva York",
+     group=groupSession)
+
+
+nyColor = input.color(
+     color.new(color.red,85),
+     "Color Nueva York",
+     group=groupSession)
+
 
 //====================================================
 // EMA ENGINE
 //====================================================
 
 
-ema10 = ta.ema(close, 10)
+ema10 = ta.ema(close,10)
 
-ema21 = ta.ema(close, 21)
+ema21 = ta.ema(close,21)
 
-ema200 = ta.ema(close, 200)
+ema200 = ta.ema(close,200)
 
-
-
-//====================================================
-// VISUAL ENGINE
-//====================================================
 
 
 plot(
      showEMA10 ? ema10 : na,
-     title="EMA 10",
+     "EMA 10",
      color=ema10Color,
      linewidth=ema10Width)
 
 
-
 plot(
      showEMA21 ? ema21 : na,
-     title="EMA 21",
+     "EMA 21",
      color=ema21Color,
      linewidth=ema21Width)
 
 
-
 plot(
      showEMA200 ? ema200 : na,
-     title="EMA 200",
+     "EMA 200",
      color=ema200Color,
      linewidth=ema200Width)
 
 
+
 //====================================================
-// END v0.1.0 PART 1
+// SESSION ENGINE
+//====================================================
+
+
+inAsia = not na(
+     time(
+          timeframe.period,
+          asiaSession,
+          timezone))
+
+
+inLondon = not na(
+     time(
+          timeframe.period,
+          londonSession,
+          timezone))
+
+
+inNY = not na(
+     time(
+          timeframe.period,
+          nySession,
+          timezone))
+
+
+
+//====================================================
+// SESSION BOX ENGINE
+//====================================================
+
+
+var box asiaBox = na
+var box londonBox = na
+var box nyBox = na
+
+
+
+//-------------------------
+// ASIA
+//-------------------------
+
+if showAsia and inAsia and not inAsia[1]
+
+    asiaBox := box.new(
+         bar_index,
+         high,
+         bar_index,
+         low,
+         bgcolor=asiaColor,
+         border_color=color.blue)
+
+
+
+if showAsia and inAsia
+
+    box.set_right(
+         asiaBox,
+         bar_index)
+
+    box.set_top(
+         asiaBox,
+         math.max(box.get_top(asiaBox),high))
+
+    box.set_bottom(
+         asiaBox,
+         math.min(box.get_bottom(asiaBox),low))
+
+
+
+//-------------------------
+// LONDON
+//-------------------------
+
+if showLondon and inLondon and not inLondon[1]
+
+    londonBox := box.new(
+         bar_index,
+         high,
+         bar_index,
+         low,
+         bgcolor=londonColor,
+         border_color=color.green)
+
+
+
+if showLondon and inLondon
+
+    box.set_right(
+         londonBox,
+         bar_index)
+
+    box.set_top(
+         londonBox,
+         math.max(box.get_top(londonBox),high))
+
+    box.set_bottom(
+         londonBox,
+         math.min(box.get_bottom(londonBox),low))
+
+
+
+//-------------------------
+// NEW YORK
+//-------------------------
+
+if showNY and inNY and not inNY[1]
+
+    nyBox := box.new(
+         bar_index,
+         high,
+         bar_index,
+         low,
+         bgcolor=nyColor,
+         border_color=color.red)
+
+
+
+if showNY and inNY
+
+    box.set_right(
+         nyBox,
+         bar_index)
+
+    box.set_top(
+         nyBox,
+         math.max(box.get_top(nyBox),high))
+
+    box.set_bottom(
+         nyBox,
+         math.min(box.get_bottom(nyBox),low))
+
+
+
+//====================================================
+// END EDGEFLOW v0.1.0
 //====================================================
