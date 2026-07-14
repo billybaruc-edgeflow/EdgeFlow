@@ -503,145 +503,76 @@ if newDay and not showHistorical
 
 
 //====================================================
-// CREATE SESSION LEVELS
+// UPDATE SESSION LEVELS
 //====================================================
 
-
-
-//-------------------------
 // ASIA
-//-------------------------
+if showLiquidity and not na(asiaHigh)
+
+    if na(asiaHighLine)
+        asiaHighLine := line.new(bar_index, asiaHigh, bar_index, asiaHigh,
+             color=color.blue,
+             style=line.style_dotted,
+             width=lineWidth)
+
+    line.set_xy1(asiaHighLine, asiaStartBar, asiaHigh)
+    line.set_xy2(asiaHighLine, bar_index, asiaHigh)
 
 
-if asiaFinished and showLiquidity
+    if na(asiaLowLine)
+        asiaLowLine := line.new(bar_index, asiaLow, bar_index, asiaLow,
+             color=color.blue,
+             style=line.style_dotted,
+             width=lineWidth)
 
-    asiaHighLine := line.new(
-         asiaStartBar,
-         asiaHigh,
-         bar_index,
-         asiaHigh,
-         color=color.blue,
-         style=line.style_dotted,
-         width=lineWidth)
+    line.set_xy1(asiaLowLine, asiaStartBar, asiaLow)
+    line.set_xy2(asiaLowLine, bar_index, asiaLow)
 
 
-    asiaLowLine := line.new(
-         asiaStartBar,
-         asiaLow,
-         bar_index,
-         asiaLow,
-         color=color.blue,
-         style=line.style_dotted,
-         width=lineWidth)
-
-
-
-    if showLabels
-
-        asiaHighLabel := label.new(
-             bar_index,
-             asiaHigh,
-             "Asia High",
-             style=label.style_label_left)
-
-
-        asiaLowLabel := label.new(
-             bar_index,
-             asiaLow,
-             "Asia Low",
-             style=label.style_label_left)
-
-
-
-
-//-------------------------
 // LONDON
-//-------------------------
+if showLiquidity and not na(londonHigh)
+
+    if na(londonHighLine)
+        londonHighLine := line.new(bar_index, londonHigh, bar_index, londonHigh,
+             color=color.green,
+             style=line.style_dotted,
+             width=lineWidth)
+
+    line.set_xy1(londonHighLine, londonStartBar, londonHigh)
+    line.set_xy2(londonHighLine, bar_index, londonHigh)
 
 
-if londonFinished and showLiquidity
+    if na(londonLowLine)
+        londonLowLine := line.new(bar_index, londonLow, bar_index, londonLow,
+             color=color.green,
+             style=line.style_dotted,
+             width=lineWidth)
 
-    londonHighLine := line.new(
-         londonStartBar,
-         londonHigh,
-         bar_index,
-         londonHigh,
-         color=color.green,
-         style=line.style_dotted,
-         width=lineWidth)
+    line.set_xy1(londonLowLine, londonStartBar, londonLow)
+    line.set_xy2(londonLowLine, bar_index, londonLow)
 
 
-    londonLowLine := line.new(
-         londonStartBar,
-         londonLow,
-         bar_index,
-         londonLow,
-         color=color.green,
-         style=line.style_dotted,
-         width=lineWidth)
-
-
-
-    if showLabels
-
-        londonHighLabel := label.new(
-             bar_index,
-             londonHigh,
-             "London High",
-             style=label.style_label_left)
-
-
-        londonLowLabel := label.new(
-             bar_index,
-             londonLow,
-             "London Low",
-             style=label.style_label_left)
-
-
-
-
-//-------------------------
 // NEW YORK
-//-------------------------
+if showLiquidity and not na(nyHigh)
+
+    if na(nyHighLine)
+        nyHighLine := line.new(bar_index, nyHigh, bar_index, nyHigh,
+             color=color.red,
+             style=line.style_dotted,
+             width=lineWidth)
+
+    line.set_xy1(nyHighLine, nyStartBar, nyHigh)
+    line.set_xy2(nyHighLine, bar_index, nyHigh)
 
 
-if nyFinished and showLiquidity
+    if na(nyLowLine)
+        nyLowLine := line.new(bar_index, nyLow, bar_index, nyLow,
+             color=color.red,
+             style=line.style_dotted,
+             width=lineWidth)
 
-    nyHighLine := line.new(
-         nyStartBar,
-         nyHigh,
-         bar_index,
-         nyHigh,
-         color=color.red,
-         style=line.style_dotted,
-         width=lineWidth)
-
-
-    nyLowLine := line.new(
-         nyStartBar,
-         nyLow,
-         bar_index,
-         nyLow,
-         color=color.red,
-         style=line.style_dotted,
-         width=lineWidth)
-
-
-
-    if showLabels
-
-        nyHighLabel := label.new(
-             bar_index,
-             nyHigh,
-             "NY High",
-             style=label.style_label_left)
-
-
-        nyLowLabel := label.new(
-             bar_index,
-             nyLow,
-             "NY Low",
-             style=label.style_label_left)
+    line.set_xy1(nyLowLine, nyStartBar, nyLow)
+    line.set_xy2(nyLowLine, bar_index, nyLow)
 
 
 
