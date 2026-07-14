@@ -1,3 +1,140 @@
 //@version=6
-indicator("EdgeFlow", overlay=true)
-commit Versión inicial de EdgeFlow
+indicator(
+     "EdgeFlow v0.1.0",
+     shorttitle="EdgeFlow",
+     overlay=true,
+     max_boxes_count=500,
+     max_lines_count=500,
+     max_labels_count=500)
+
+
+//====================================================
+// EdgeFlow
+// Version : v0.1.0
+// Sprint  : 01
+// Description:
+// Base architecture
+// EMA Engine
+// Future modules:
+// Sessions / Liquidity / Structure / FVG / OB
+//====================================================
+
+
+//====================================================
+// INPUTS
+//====================================================
+
+//-------------------------
+// EMA SETTINGS
+//-------------------------
+
+groupEMA = "📈 EMA Engine"
+
+
+showEMA10 = input.bool(
+     true,
+     "Mostrar EMA 10",
+     group=groupEMA)
+
+
+showEMA21 = input.bool(
+     true,
+     "Mostrar EMA 21",
+     group=groupEMA)
+
+
+showEMA200 = input.bool(
+     true,
+     "Mostrar EMA 200",
+     group=groupEMA)
+
+
+
+ema10Color = input.color(
+     color.orange,
+     "Color EMA 10",
+     group=groupEMA)
+
+
+ema21Color = input.color(
+     color.blue,
+     "Color EMA 21",
+     group=groupEMA)
+
+
+ema200Color = input.color(
+     color.red,
+     "Color EMA 200",
+     group=groupEMA)
+
+
+
+ema10Width = input.int(
+     2,
+     "Grosor EMA 10",
+     minval=1,
+     maxval=5,
+     group=groupEMA)
+
+
+ema21Width = input.int(
+     2,
+     "Grosor EMA 21",
+     minval=1,
+     maxval=5,
+     group=groupEMA)
+
+
+ema200Width = input.int(
+     3,
+     "Grosor EMA 200",
+     minval=1,
+     maxval=5,
+     group=groupEMA)
+
+
+
+//====================================================
+// EMA ENGINE
+//====================================================
+
+
+ema10 = ta.ema(close, 10)
+
+ema21 = ta.ema(close, 21)
+
+ema200 = ta.ema(close, 200)
+
+
+
+//====================================================
+// VISUAL ENGINE
+//====================================================
+
+
+plot(
+     showEMA10 ? ema10 : na,
+     title="EMA 10",
+     color=ema10Color,
+     linewidth=ema10Width)
+
+
+
+plot(
+     showEMA21 ? ema21 : na,
+     title="EMA 21",
+     color=ema21Color,
+     linewidth=ema21Width)
+
+
+
+plot(
+     showEMA200 ? ema200 : na,
+     title="EMA 200",
+     color=ema200Color,
+     linewidth=ema200Width)
+
+
+//====================================================
+// END v0.1.0 PART 1
+//====================================================
