@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 indicator(
      "EdgeFlow v0.3.1",
      shorttitle="EdgeFlow",
