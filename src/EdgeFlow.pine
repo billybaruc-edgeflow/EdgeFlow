@@ -1,6 +1,6 @@
 //@version=5
 indicator(
-     "EdgeFlow v0.3.0",
+     "EdgeFlow v0.3.1",
      shorttitle="EdgeFlow",
      overlay=true,
      max_lines_count=500,
@@ -9,11 +9,12 @@ indicator(
 
 //====================================================
 // EdgeFlow
-// Version : v0.3.0
-// Sprint  : 03 SWEEP ENGINE
+// Version : v0.3.1
+// Sprint  : 03 SWEEP ENGINE + SESSION LABELS
 //
 // Changes:
 // - Liquidity Sweep Engine v1.0
+// - Session High/Low Labels
 // - Multi-level sweep detection
 // - Configurable confirmation modes
 // - Sweep scoring system
@@ -24,7 +25,8 @@ indicator(
 // - EMA Engine
 // - Session Engine
 // - Session Liquidity Engine
-// - Liquidity Sweep Engine ⭐ NEW
+// - Liquidity Sweep Engine
+// - Session Labels Engine ⭐ NEW
 //====================================================
 
 
@@ -342,6 +344,8 @@ var float asiaHigh = na
 var float asiaLow = na
 
 var int asiaStartBar = na
+var int asiaHighBar = na
+var int asiaLowBar = na
 
 
 
@@ -353,6 +357,8 @@ var float londonHigh = na
 var float londonLow = na
 
 var int londonStartBar = na
+var int londonHighBar = na
+var int londonLowBar = na
 
 
 
@@ -364,6 +370,8 @@ var float nyHigh = na
 var float nyLow = na
 
 var int nyStartBar = na
+var int nyHighBar = na
+var int nyLowBar = na
 
 
 
@@ -397,18 +405,19 @@ if showAsia
           asiaHigh := high
           asiaLow := low
           asiaStartBar := bar_index
+          asiaHighBar := bar_index
+          asiaLowBar := bar_index
 
 
      if inAsia
 
-          asiaHigh := math.max(
-               asiaHigh,
-               high)
+          if high > asiaHigh
+               asiaHigh := high
+               asiaHighBar := bar_index
 
-
-          asiaLow := math.min(
-               asiaLow,
-               low)
+          if low < asiaLow
+               asiaLow := low
+               asiaLowBar := bar_index
 
 
 
@@ -424,18 +433,19 @@ if showLondon
           londonHigh := high
           londonLow := low
           londonStartBar := bar_index
+          londonHighBar := bar_index
+          londonLowBar := bar_index
 
 
      if inLondon
 
-          londonHigh := math.max(
-               londonHigh,
-               high)
+          if high > londonHigh
+               londonHigh := high
+               londonHighBar := bar_index
 
-
-          londonLow := math.min(
-               londonLow,
-               low)
+          if low < londonLow
+               londonLow := low
+               londonLowBar := bar_index
 
 
 
@@ -451,18 +461,19 @@ if showNY
           nyHigh := high
           nyLow := low
           nyStartBar := bar_index
+          nyHighBar := bar_index
+          nyLowBar := bar_index
 
 
      if inNY
 
-          nyHigh := math.max(
-               nyHigh,
-               high)
+          if high > nyHigh
+               nyHigh := high
+               nyHighBar := bar_index
 
-
-          nyLow := math.min(
-               nyLow,
-               low)
+          if low < nyLow
+               nyLow := low
+               nyLowBar := bar_index
 
 
 
@@ -480,7 +491,7 @@ nyFinished = not inNY and inNY[1]
 
 
 //====================================================
-// LIQUIDITY VISUAL ENGINE v0.3.0
+// LIQUIDITY VISUAL ENGINE v0.3.1
 //====================================================
 
 
@@ -497,7 +508,7 @@ var line nyLowLine = na
 
 
 
-// Etiquetas
+// Etiquetas de líneas
 
 var label asiaHighLabel = na
 var label asiaLowLabel = na
@@ -654,6 +665,114 @@ if inNY and showLiquidity
 
      if not na(londonLowLine)
           line.set_x2(londonLowLine, bar_index)
+
+
+
+//====================================================
+// SESSION LABELS - NEW v0.3.1
+//====================================================
+
+// ASIA HIGH LABEL
+if showLabels and not na(asiaHigh)
+     asiaHighLabelText = "Asia High\n" + str.tostring(asiaHigh, format.price)
+     
+     if na(asiaHighLabel)
+          asiaHighLabel := label.new(
+               bar_index,
+               asiaHigh * 1.001,
+               text=asiaHighLabelText,
+               color=color.blue,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(asiaHighLabel, asiaHighLabelText)
+          label.set_xy(asiaHighLabel, bar_index, asiaHigh * 1.001)
+
+// ASIA LOW LABEL
+if showLabels and not na(asiaLow)
+     asiaLowLabelText = "Asia Low\n" + str.tostring(asiaLow, format.price)
+     
+     if na(asiaLowLabel)
+          asiaLowLabel := label.new(
+               bar_index,
+               asiaLow * 0.999,
+               text=asiaLowLabelText,
+               color=color.blue,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(asiaLowLabel, asiaLowLabelText)
+          label.set_xy(asiaLowLabel, bar_index, asiaLow * 0.999)
+
+// LONDON HIGH LABEL
+if showLabels and not na(londonHigh)
+     londonHighLabelText = "London High\n" + str.tostring(londonHigh, format.price)
+     
+     if na(londonHighLabel)
+          londonHighLabel := label.new(
+               bar_index,
+               londonHigh * 1.001,
+               text=londonHighLabelText,
+               color=color.green,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(londonHighLabel, londonHighLabelText)
+          label.set_xy(londonHighLabel, bar_index, londonHigh * 1.001)
+
+// LONDON LOW LABEL
+if showLabels and not na(londonLow)
+     londonLowLabelText = "London Low\n" + str.tostring(londonLow, format.price)
+     
+     if na(londonLowLabel)
+          londonLowLabel := label.new(
+               bar_index,
+               londonLow * 0.999,
+               text=londonLowLabelText,
+               color=color.green,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(londonLowLabel, londonLowLabelText)
+          label.set_xy(londonLowLabel, bar_index, londonLow * 0.999)
+
+// NEW YORK HIGH LABEL
+if showLabels and not na(nyHigh)
+     nyHighLabelText = "NY High\n" + str.tostring(nyHigh, format.price)
+     
+     if na(nyHighLabel)
+          nyHighLabel := label.new(
+               bar_index,
+               nyHigh * 1.001,
+               text=nyHighLabelText,
+               color=color.red,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(nyHighLabel, nyHighLabelText)
+          label.set_xy(nyHighLabel, bar_index, nyHigh * 1.001)
+
+// NEW YORK LOW LABEL
+if showLabels and not na(nyLow)
+     nyLowLabelText = "NY Low\n" + str.tostring(nyLow, format.price)
+     
+     if na(nyLowLabel)
+          nyLowLabel := label.new(
+               bar_index,
+               nyLow * 0.999,
+               text=nyLowLabelText,
+               color=color.red,
+               textcolor=color.white,
+               style=label.style_label_left,
+               size=size.small)
+     else
+          label.set_text(nyLowLabel, nyLowLabelText)
+          label.set_xy(nyLowLabel, bar_index, nyLow * 0.999)
 
 
 
@@ -899,5 +1018,5 @@ if showSweepNY and not na(nyLow) and not nyLowSwept
 
 
 //====================================================
-// END EDGEFLOW v0.3.0
+// END EDGEFLOW v0.3.1
 //====================================================/
