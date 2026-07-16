@@ -110,73 +110,58 @@ var int nyHighBar = na
 var int nyLowBar = na
 
 //====================================================
-// RESET DAILY VALUES
+// RESET DAILY VALUES & CAPTURE ASIA
 //====================================================
-if newDay and not showHistorical
-    asiaHigh := na
-    asiaLow := na
-    londonHigh := na
-    londonLow := na
-    nyHigh := na
-    nyLow := na
+// Resetear valores en un nuevo día (si no se mantiene histórico)
+resetValues = newDay and not showHistorical
 
-//====================================================
-// CAPTURE ASIA
-//====================================================
-if showAsia
-    if inAsia and not inAsia[1]
-        asiaHigh := high
-        asiaLow := low
+asiaHigh := resetValues ? na : (showAsia and inAsia and not inAsia[1]) ? high : (showAsia and inAsia and high > nz(asiaHigh)) ? high : asiaHigh
+asiaLow  := resetValues ? na : (showAsia and inAsia and not inAsia[1]) ? low  : (showAsia and inAsia and low < nz(asiaLow, 999999)) ? low : asiaLow
+
+if showAsia and inAsia
+    if not inAsia[1]
         asiaStartBar := bar_index
         asiaHighBar := bar_index
         asiaLowBar := bar_index
-
-    if inAsia
-        if high > asiaHigh
-            asiaHigh := high
+    else
+        if high > asiaHigh[1]
             asiaHighBar := bar_index
-        if low < asiaLow
-            asiaLow := low
+        if low < asiaLow[1]
             asiaLowBar := bar_index
 
 //====================================================
 // CAPTURE LONDON
 //====================================================
-if showLondon
-    if inLondon and not inLondon[1]
-        londonHigh := high
-        londonLow := low
+londonHigh := resetValues ? na : (showLondon and inLondon and not inLondon[1]) ? high : (showLondon and inLondon and high > nz(londonHigh)) ? high : londonHigh
+londonLow  := resetValues ? na : (showLondon and inLondon and not inLondon[1]) ? low  : (showLondon and inLondon and low < nz(londonLow, 999999)) ? low : londonLow
+
+if showLondon and inLondon
+    if not inLondon[1]
         londonStartBar := bar_index
         londonHighBar := bar_index
         londonLowBar := bar_index
-
-    if inLondon
-        if high > londonHigh
-            londonHigh := high
+    else
+        if high > londonHigh[1]
             londonHighBar := bar_index
-        if low < londonLow
-            londonLow := low
+        if low < londonLow[1]
             londonLowBar := bar_index
 
 //====================================================
 // CAPTURE NEW YORK
 //====================================================
-if showNY
-    if inNY and not inNY[1]
-        nyHigh := high
-        nyLow := low
+nyHigh := resetValues ? na : (showNY and inNY and not inNY[1]) ? high : (showNY and inNY and high > nz(nyHigh)) ? high : nyHigh
+nyLow  := resetValues ? na : (showNY and inNY and not inNY[1]) ? low  : (showNY and inNY and low < nz(nyLow, 999999)) ? low : nyLow
+
+if showNY and inNY
+    if not inNY[1]
         nyStartBar := bar_index
         nyHighBar := bar_index
         nyLowBar := bar_index
-
-    if inNY
-        if high > nyHigh
-            nyHigh := high
+    else
+        if high > nyHigh[1]
             nyHighBar := bar_index
-        if low < nyLow
-            nyLow := low
+        if low < nyLow[1]
             nyLowBar := bar_index
-
 
 
 //====================================================
