@@ -325,8 +325,7 @@ inNY = not na(
 //====================================================
 
 
-newDay = ta.change(
-     time("D")) != 0
+bool newDay = ta.change(time("D")) != 0
 
 
 
