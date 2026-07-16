@@ -1,697 +1,211 @@
-//@version=6
-indicator(
-     "EdgeFlow v0.3.1",
-     shorttitle="EdgeFlow",
-     overlay=true,
-     max_lines_count=500,
-     max_labels_count=500)
+//@version=6 
+indicator("EdgeFlow v0.4.0", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 100)
 
 //====================================================
-// EdgeFlow v0.3.1
+// EDGEFLOW v0.4.0 - CORE ENGINE
 //====================================================
 
-//----------------------------------------------------
-// EMA ENGINE INPUTS
-//----------------------------------------------------
-groupEMA = "📈 EMA Engine"
-
-showEMA10 = input.bool(true, "Mostrar EMA 10", group=groupEMA)
-showEMA21 = input.bool(true, "Mostrar EMA 21", group=groupEMA)
-showEMA200 = input.bool(true, "Mostrar EMA 200", group=groupEMA)
-
-ema10Color = input.color(color.orange, "Color EMA 10", group=groupEMA)
-ema21Color = input.color(color.blue, "Color EMA 21", group=groupEMA)
-ema200Color = input.color(color.red, "Color EMA 200", group=groupEMA)
-emaWidth = input.int(2, "Grosor EMA", minval=1, maxval=5, group=groupEMA)
-
-//----------------------------------------------------
-// SESSION ENGINE INPUTS
-//----------------------------------------------------
-groupSession = "🌎 Session Engine"
-
-sessionTimezone = input.string("America/New_York", "Zona horaria", group=groupSession)
-
-showAsia = input.bool(true, "Mostrar Asia", group=groupSession)
-asiaSession = input.session("0000-0900", "Horario Asia", group=groupSession)
-
-showLondon = input.bool(true, "Mostrar Londres", group=groupSession)
-londonSession = input.session("0800-1700", "Horario Londres", group=groupSession)
-
-showNY = input.bool(true, "Mostrar Nueva York", group=groupSession)
-nySession = input.session("0930-1600", "Horario Nueva York", group=groupSession)
-
-//----------------------------------------------------
-// LIQUIDITY ENGINE INPUTS
-//----------------------------------------------------
-groupLiquidity = "💧 Session Liquidity Engine"
-
-showLiquidity = input.bool(true, "Mostrar High / Low", group=groupLiquidity)
-showLabels = input.bool(true, "Mostrar etiquetas", group=groupLiquidity)
-lineWidth = input.int(1, "Grosor líneas", minval=1, maxval=3, group=groupLiquidity)
-showHistorical = input.bool(false, "Mantener histórico", group=groupLiquidity)
-
-//----------------------------------------------------
-// SWEEP ENGINE INPUTS
-//----------------------------------------------------
-groupSweep = "⚡ Liquidity Sweep Engine"
-
-showSweepAsia = input.bool(true, "Asia Sweeps", group=groupSweep)
-showSweepLondon = input.bool(true, "London Sweeps", group=groupSweep)
-showSweepNY = input.bool(true, "New York Sweeps", group=groupSweep)
-
-sweepMode = input.string("cross-session", "Modo confirmación", options=["same-session", "cross-session"], group=groupSweep)
-maxSweepCandles = input.int(3, "Máx velas confirmación", minval=1, maxval=10, group=groupSweep)
-minPenetration = input.float(0.5, "Penetración mínima (pips)", minval=0.01, step=0.1, group=groupSweep)
-showHistoricalSweeps = input.bool(false, "Mostrar históricos sweeps", group=groupSweep)
-useTrendFilter = input.bool(true, "Filtro EMA 200", group=groupSweep)
+//====================================================
+// GENERAL SETTINGS
+//====================================================
+groupGeneral = "General"
+showHistorical = input.bool(false, "Show Historical Sessions", group = groupGeneral)
+showDashboard  = input.bool(false, "Show Dashboard", group = groupGeneral)
 
 //====================================================
-// CALCULATIONS - EMA ENGINE
+// MODULE 6B: LABELS CONFIGURATION INPUTS ⭐ NEW
+//====================================================
+groupLabels = "Session Labels Settings"
+showLabels  = input.bool(true, "Show Session Labels", group = groupLabels)
+labelSize   = input.string(size.normal, "Labels Size", options = [size.small, size.normal, size.large], group = groupLabels)
+labelColorMode = input.string("Session Color", "Labels Color Mode", options = ["Session Color", "White", "Black"], group = groupLabels)
+
+//====================================================
+// EMA ENGINE SETTINGS
+//====================================================
+groupEMA = "Moving Averages"
+showEMA10  = input.bool(true, "EMA 10", group = groupEMA)
+showEMA21  = input.bool(true, "EMA 21", group = groupEMA)
+showEMA200 = input.bool(true, "EMA 200", group = groupEMA)
+
+//====================================================
+// SESSION SETTINGS
+//====================================================
+groupSessions = "Trading Sessions"
+showAsia   = input.bool(true, "Asia", group = groupSessions)
+showLondon = input.bool(true, "London", group = groupSessions)
+showNY     = input.bool(true, "New York", group = groupSessions)
+
+// Horarios (Chile)
+asiaSession   = input.session("2000-0600", "Asia", group = groupSessions)
+londonSession = input.session("0400-0900", "London", group = groupSessions)
+nySession     = input.session("0930-1700", "New York", group = groupSessions)
+
+//====================================================
+// COLORS
+//====================================================
+groupColors = "Colors"
+asiaColor   = input.color(color.rgb(0,180,255), "Asia", group = groupColors)
+londonColor = input.color(color.rgb(255,170,0), "London", group = groupColors)
+nyColor     = input.color(color.rgb(255,70,70), "New York", group = groupColors)
+
+//====================================================
+// SWEEP SETTINGS
+//====================================================
+groupSweep = "Liquidity Sweep"
+enableSweep = input.bool(true, "Enable Sweep Detection", group = groupSweep)
+barsToConfirm = input.int(3, "Confirmation Bars", minval = 1, maxval = 10, group = groupSweep)
+minPenetration = input.int(1, "Minimum Penetration (Ticks)", minval = 1, group = groupSweep)
+
+//====================================================
+// ARCHITECTURE: USER-DEFINED TYPES (STRUCTS)
+//====================================================
+// Expandimos el objeto para incluir las referencias de los Labels
+type SessionData
+    float highPrice
+    float lowPrice
+    int startBar
+    int highBar
+    int lowBar
+    line highLine
+    line lowLine
+    label highLabel // ⭐ Agregar referencia visual High Label
+    label lowLabel  // ⭐ Agregar referencia visual Low Label
+    string statusHigh 
+    string statusLow  
+
+// Instanciamos los objetos de forma persistente para cada sesión
+var SessionData asia   = SessionData.new(na, na, na, na, na, na, na, na, na, "active", "active")
+var SessionData london = SessionData.new(na, na, na, na, na, na, na, na, na, "active", "active")
+var SessionData ny     = SessionData.new(na, na, na, na, na, na, na, na, na, "active", "active")
+
+//====================================================
+// MODULE 2: EMA ENGINE
 //====================================================
 ema10 = ta.ema(close, 10)
 ema21 = ta.ema(close, 21)
 ema200 = ta.ema(close, 200)
 
-plot(showEMA10 ? ema10 : na, "EMA 10", color=ema10Color, linewidth=emaWidth)
-plot(showEMA21 ? ema21 : na, "EMA 21", color=ema21Color, linewidth=emaWidth)
-plot(showEMA200 ? ema200 : na, "EMA 200", color=ema200Color, linewidth=emaWidth)
+plot(showEMA10 ? ema10 : na, title="EMA 10", color=color.rgb(0,170,255), linewidth=2)
+plot(showEMA21 ? ema21 : na, title="EMA 21", color=color.rgb(255,210,0), linewidth=2)
+plot(showEMA200 ? ema200 : na, title="EMA 200", color=color.rgb(255,110,90), linewidth=3)
 
 //====================================================
-// SESSION DETECTION
+// MODULE 3: SESSION ENGINE DETECTION
 //====================================================
-inAsia = not na(time(timeframe.period, asiaSession, sessionTimezone))
-inLondon = not na(time(timeframe.period, londonSession, sessionTimezone))
-inNY = not na(time(timeframe.period, nySession, sessionTimezone))
+inAsia   = not na(time(timeframe.period, asiaSession))
+inLondon = not na(time(timeframe.period, londonSession))
+inNY     = not na(time(timeframe.period, nySession))
 
-//====================================================
-// NEW DAY CONTROL
-//====================================================
+asiaStarted   = inAsia and not inAsia[1]
+londonStarted = inLondon and not inLondon[1]
+nyStarted     = inNY and not inNY[1]
+
 bool newDay = ta.change(time("D")) != 0
 
-//====================================================
-// SESSION VARIABLES
-//====================================================
-var float asiaHigh = na
-var float asiaLow = na
-var int asiaStartBar = na
-var int asiaHighBar = na
-var int asiaLowBar = na
-
-var float londonHigh = na
-var float londonLow = na
-var int londonStartBar = na
-var int londonHighBar = na
-var int londonLowBar = na
-
-var float nyHigh = na
-var float nyLow = na
-var int nyStartBar = na
-var int nyHighBar = na
-var int nyLowBar = na
-
-//====================================================
-// RESET DAILY VALUES & CAPTURE ASIA
-//====================================================
-// Resetear valores en un nuevo día (si no se mantiene histórico)
-resetValues = newDay and not showHistorical
-
-asiaHigh := resetValues ? na : (showAsia and inAsia and not inAsia[1]) ? high : (showAsia and inAsia and high > nz(asiaHigh)) ? high : asiaHigh
-asiaLow  := resetValues ? na : (showAsia and inAsia and not inAsia[1]) ? low  : (showAsia and inAsia and low < nz(asiaLow, 999999)) ? low : asiaLow
-
-if showAsia and inAsia
-    if not inAsia[1]
-        asiaStartBar := bar_index
-        asiaHighBar := bar_index
-        asiaLowBar := bar_index
-    else
-        if high > asiaHigh[1]
-            asiaHighBar := bar_index
-        if low < asiaLow[1]
-            asiaLowBar := bar_index
-
-//====================================================
-// CAPTURE LONDON
-//====================================================
-londonHigh := resetValues ? na : (showLondon and inLondon and not inLondon[1]) ? high : (showLondon and inLondon and high > nz(londonHigh)) ? high : londonHigh
-londonLow  := resetValues ? na : (showLondon and inLondon and not inLondon[1]) ? low  : (showLondon and inLondon and low < nz(londonLow, 999999)) ? low : londonLow
-
-if showLondon and inLondon
-    if not inLondon[1]
-        londonStartBar := bar_index
-        londonHighBar := bar_index
-        londonLowBar := bar_index
-    else
-        if high > londonHigh[1]
-            londonHighBar := bar_index
-        if low < londonLow[1]
-            londonLowBar := bar_index
-
-//====================================================
-// CAPTURE NEW YORK
-//====================================================
-nyHigh := resetValues ? na : (showNY and inNY and not inNY[1]) ? high : (showNY and inNY and high > nz(nyHigh)) ? high : nyHigh
-nyLow  := resetValues ? na : (showNY and inNY and not inNY[1]) ? low  : (showNY and inNY and low < nz(nyLow, 999999)) ? low : nyLow
-
-if showNY and inNY
-    if not inNY[1]
-        nyStartBar := bar_index
-        nyHighBar := bar_index
-        nyLowBar := bar_index
-    else
-        if high > nyHigh[1]
-            nyHighBar := bar_index
-        if low < nyLow[1]
-            nyLowBar := bar_index
-
-
-//====================================================
-// SESSION CLOSE EVENTS
-//====================================================
-
-
-asiaFinished = not inAsia and inAsia[1]
-
-londonFinished = not inLondon and inLondon[1]
-
-nyFinished = not inNY and inNY[1]
-
-
-
-//====================================================
-// LIQUIDITY VISUAL ENGINE v0.3.1
-//====================================================
-
-
-// Variables de líneas actuales
-
-var line asiaHighLine = na
-var line asiaLowLine = na
-
-var line londonHighLine = na
-var line londonLowLine = na
-
-var line nyHighLine = na
-var line nyLowLine = na
-
-
-
-// Etiquetas de líneas
-
-var label asiaHighLabel = na
-var label asiaLowLabel = na
-
-var label londonHighLabel = na
-var label londonLowLabel = na
-
-var label nyHighLabel = na
-var label nyLowLabel = na
-
-
-
-//====================================================
-// DAILY CLEANUP
-//====================================================
-
-
+// Reset de estructuras al iniciar el día (si no se requiere histórico)
 if newDay and not showHistorical
-
-     if not na(asiaHighLine)
-          line.delete(asiaHighLine)
-
-     if not na(asiaLowLine)
-          line.delete(asiaLowLine)
-
-
-     if not na(londonHighLine)
-          line.delete(londonHighLine)
-
-     if not na(londonLowLine)
-          line.delete(londonLowLine)
-
-
-     if not na(nyHighLine)
-          line.delete(nyHighLine)
-
-     if not na(nyLowLine)
-          line.delete(nyLowLine)
-
-
-
-     if not na(asiaHighLabel)
-          label.delete(asiaHighLabel)
-
-     if not na(asiaLowLabel)
-          label.delete(asiaLowLabel)
-
-
-     if not na(londonHighLabel)
-          label.delete(londonHighLabel)
-
-     if not na(londonLowLabel)
-          label.delete(londonLowLabel)
-
-
-     if not na(nyHighLabel)
-          label.delete(nyHighLabel)
-
-     if not na(nyLowLabel)
-          label.delete(nyLowLabel)
-
-
+    asia.highPrice := na, asia.lowPrice := na, asia.startBar := na, asia.highBar := na, asia.lowBar := na
+    asia.highLine := na, asia.lowLine := na, asia.highLabel := na, asia.lowLabel := na, asia.statusHigh := "active", asia.statusLow := "active"
+    
+    london.highPrice := na, london.lowPrice := na, london.startBar := na, london.highBar := na, london.lowBar := na
+    london.highLine := na, london.lowLine := na, london.highLabel := na, london.lowLabel := na, london.statusHigh := "active", london.statusLow := "active"
+    
+    ny.highPrice := na, ny.lowPrice := na, ny.startBar := na, ny.highBar := na, ny.lowBar := na
+    ny.highLine := na, ny.lowLine := na, ny.highLabel := na, ny.lowLabel := na, ny.statusHigh := "active", ny.statusLow := "active"
 
 //====================================================
-// UPDATE SESSION LEVELS
+// MODULE 4: SESSION HIGH / LOW ENGINE
 //====================================================
+if showAsia
+    if asiaStarted
+        asia.highPrice := high, asia.lowPrice := low
+        asia.startBar := bar_index, asia.highBar := bar_index, asia.lowBar := bar_index
+        asia.statusHigh := "active", asia.statusLow := "active"
+    if inAsia
+        if high > nz(asia.highPrice, 0.0)
+            asia.highPrice := high
+            asia.highBar := bar_index
+        if low < nz(asia.lowPrice, 999999.0)
+            asia.lowPrice := low
+            asia.lowBar := bar_index
 
-// ASIA
-if showLiquidity and not na(asiaHigh)
+if showLondon
+    if londonStarted
+        london.highPrice := high, london.lowPrice := low
+        london.startBar := bar_index, london.highBar := bar_index, london.lowBar := bar_index
+        london.statusHigh := "active", london.statusLow := "active"
+    if inLondon
+        if high > nz(london.highPrice, 0.0)
+            london.highPrice := high
+            london.highBar := bar_index
+        if low < nz(london.lowPrice, 999999.0)
+            london.lowPrice := low
+            london.lowBar := bar_index
 
-     if na(asiaHighLine)
-          asiaHighLine := line.new(bar_index, asiaHigh, bar_index, asiaHigh,
-               color=color.blue,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(asiaHighLine, asiaStartBar, asiaHigh)
-     line.set_xy2(asiaHighLine, bar_index, asiaHigh)
-
-
-     if na(asiaLowLine)
-          asiaLowLine := line.new(bar_index, asiaLow, bar_index, asiaLow,
-               color=color.blue,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(asiaLowLine, asiaStartBar, asiaLow)
-     line.set_xy2(asiaLowLine, bar_index, asiaLow)
-
-
-// LONDON
-if showLiquidity and not na(londonHigh)
-
-     if na(londonHighLine)
-          londonHighLine := line.new(bar_index, londonHigh, bar_index, londonHigh,
-               color=color.green,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(londonHighLine, londonStartBar, londonHigh)
-     line.set_xy2(londonHighLine, bar_index, londonHigh)
-
-
-     if na(londonLowLine)
-          londonLowLine := line.new(bar_index, londonLow, bar_index, londonLow,
-               color=color.green,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(londonLowLine, londonStartBar, londonLow)
-     line.set_xy2(londonLowLine, bar_index, londonLow)
-
-
-// NEW YORK
-if showLiquidity and not na(nyHigh)
-
-     if na(nyHighLine)
-          nyHighLine := line.new(bar_index, nyHigh, bar_index, nyHigh,
-               color=color.red,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(nyHighLine, nyStartBar, nyHigh)
-     line.set_xy2(nyHighLine, bar_index, nyHigh)
-
-
-     if na(nyLowLine)
-          nyLowLine := line.new(bar_index, nyLow, bar_index, nyLow,
-               color=color.red,
-               style=line.style_dotted,
-               width=lineWidth)
-
-     line.set_xy1(nyLowLine, nyStartBar, nyLow)
-     line.set_xy2(nyLowLine, bar_index, nyLow)
-
-
+if showNY
+    if nyStarted
+        ny.highPrice := high, ny.lowPrice := low
+        ny.startBar := bar_index, ny.highBar := bar_index, ny.lowBar := bar_index
+        ny.statusHigh := "active", ny.statusLow := "active"
+    if inNY
+        if high > nz(ny.highPrice, 0.0)
+            ny.highPrice := high
+            ny.highBar := bar_index
+        if low < nz(ny.lowPrice, 999999.0)
+            ny.lowPrice := low
+            ny.lowBar := bar_index
 
 //====================================================
-// EXTEND LEVELS DURING NY SESSION
+// MODULE 6A & 6B: DYNAMIC LIQUIDITY & LABELS ENGINE
 //====================================================
+// Función reutilizable para gestionar el color personalizado de la etiqueta
+getLabelColor(color sessionColor) =>
+    labelColorMode == "Session Color" ? sessionColor : labelColorMode == "White" ? color.white : color.black
 
+getLabelTextColor(color sessionColor) =>
+    labelColorMode == "Session Color" ? color.white : labelColorMode == "White" ? color.black : color.white
 
-if inNY and showLiquidity
+// Función maestra optimizada para actualizar líneas e introducir las etiquetas en el extremo derecho
+updateDynamicLiquidityAndLabels(SessionData session, color sessionColor, string sessionName) =>
+    if not na(session.highPrice)
+        // Control de Históricos: Borrado preventivo en la vela actual si showHistorical es falso
+        if not showHistorical
+            line.delete(session.highLine)
+            line.delete(session.lowLine)
+            label.delete(session.highLabel)
+            label.delete(session.lowLabel)
+        else if (bar_index == session.startBar)
+            session.highLine := na, session.lowLine := na
+            session.highLabel := na, session.lowLabel := na
 
-     if not na(asiaHighLine)
-          line.set_x2(asiaHighLine, bar_index)
+        // MÓDULO 6A: Renderizado Dinámico Infinito de Líneas hacia 'bar_index'
+        session.highLine := line.new(session.highBar, session.highPrice, bar_index, session.highPrice, color = sessionColor, style = line.style_dashed, width = 2)
+        session.lowLine  := line.new(session.lowBar, session.lowPrice, bar_index, session.lowPrice, color = sessionColor, style = line.style_dashed, width = 2)
 
-     if not na(asiaLowLine)
-          line.set_x2(asiaLowLine, bar_index)
+        // MÓDULO 6B: Renderizado Dinámico de Etiquetas Profesionales en la punta derecha
+        if showLabels
+            actualLabelColor = getLabelColor(sessionColor)
+            actualTextColor  = getLabelTextColor(sessionColor)
+            
+            session.highLabel := label.new(
+                 x = bar_index + 2, 
+                 y = session.highPrice, 
+                 text = sessionName + " High", 
+                 color = actualLabelColor, 
+                 textcolor = actualTextColor, 
+                 style = label.style_label_left, 
+                 size = labelSize)
+                 
+            session.lowLabel := label.new(
+                 x = bar_index + 2, 
+                 y = session.lowPrice, 
+                 text = sessionName + " Low", 
+                 color = actualLabelColor, 
+                 textcolor = actualTextColor, 
+                 style = label.style_label_left, 
+                 size = labelSize)
 
-
-     if not na(londonHighLine)
-          line.set_x2(londonHighLine, bar_index)
-
-     if not na(londonLowLine)
-          line.set_x2(londonLowLine, bar_index)
-
-
-
-//====================================================
-// SESSION LABELS - NEW v0.3.1
-//====================================================
-
-// ASIA HIGH LABEL
-if showLabels and not na(asiaHigh)
-     asiaHighLabelText = "Asia High\n" + str.tostring(asiaHigh, format.price)
-     
-     if na(asiaHighLabel)
-          asiaHighLabel := label.new(
-               bar_index,
-               asiaHigh * 1.001,
-               text=asiaHighLabelText,
-               color=color.blue,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(asiaHighLabel, asiaHighLabelText)
-          label.set_xy(asiaHighLabel, bar_index, asiaHigh * 1.001)
-
-// ASIA LOW LABEL
-if showLabels and not na(asiaLow)
-     asiaLowLabelText = "Asia Low\n" + str.tostring(asiaLow, format.price)
-     
-     if na(asiaLowLabel)
-          asiaLowLabel := label.new(
-               bar_index,
-               asiaLow * 0.999,
-               text=asiaLowLabelText,
-               color=color.blue,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(asiaLowLabel, asiaLowLabelText)
-          label.set_xy(asiaLowLabel, bar_index, asiaLow * 0.999)
-
-// LONDON HIGH LABEL
-if showLabels and not na(londonHigh)
-     londonHighLabelText = "London High\n" + str.tostring(londonHigh, format.price)
-     
-     if na(londonHighLabel)
-          londonHighLabel := label.new(
-               bar_index,
-               londonHigh * 1.001,
-               text=londonHighLabelText,
-               color=color.green,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(londonHighLabel, londonHighLabelText)
-          label.set_xy(londonHighLabel, bar_index, londonHigh * 1.001)
-
-// LONDON LOW LABEL
-if showLabels and not na(londonLow)
-     londonLowLabelText = "London Low\n" + str.tostring(londonLow, format.price)
-     
-     if na(londonLowLabel)
-          londonLowLabel := label.new(
-               bar_index,
-               londonLow * 0.999,
-               text=londonLowLabelText,
-               color=color.green,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(londonLowLabel, londonLowLabelText)
-          label.set_xy(londonLowLabel, bar_index, londonLow * 0.999)
-
-// NEW YORK HIGH LABEL
-if showLabels and not na(nyHigh)
-     nyHighLabelText = "NY High\n" + str.tostring(nyHigh, format.price)
-     
-     if na(nyHighLabel)
-          nyHighLabel := label.new(
-               bar_index,
-               nyHigh * 1.001,
-               text=nyHighLabelText,
-               color=color.red,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(nyHighLabel, nyHighLabelText)
-          label.set_xy(nyHighLabel, bar_index, nyHigh * 1.001)
-
-// NEW YORK LOW LABEL
-if showLabels and not na(nyLow)
-     nyLowLabelText = "NY Low\n" + str.tostring(nyLow, format.price)
-     
-     if na(nyLowLabel)
-          nyLowLabel := label.new(
-               bar_index,
-               nyLow * 0.999,
-               text=nyLowLabelText,
-               color=color.red,
-               textcolor=color.white,
-               style=label.style_label_left,
-               size=size.small)
-     else
-          label.set_text(nyLowLabel, nyLowLabelText)
-          label.set_xy(nyLowLabel, bar_index, nyLow * 0.999)
-
-
-
-//====================================================
-// SWEEP ENGINE v1.0
-//====================================================
-
-// Variables de estado de sweeps consumidos
-var bool asiaHighSwept = false
-var bool asiaLowSwept = false
-var bool londonHighSwept = false
-var bool londonLowSwept = false
-var bool nyHighSwept = false
-var bool nyLowSwept = false
-
-// Labels para visualización
-var label asiaHighSweepLabel = na
-var label asiaLowSweepLabel = na
-var label londonHighSweepLabel = na
-var label londonLowSweepLabel = na
-var label nyHighSweepLabel = na
-var label nyLowSweepLabel = na
-
-// Reset diarios
-if newDay and not showHistoricalSweeps
-     asiaHighSwept := false
-     asiaLowSwept := false
-     londonHighSwept := false
-     londonLowSwept := false
-     nyHighSwept := false
-     nyLowSwept := false
-
-     if not na(asiaHighSweepLabel)
-          label.delete(asiaHighSweepLabel)
-     if not na(asiaLowSweepLabel)
-          label.delete(asiaLowSweepLabel)
-     if not na(londonHighSweepLabel)
-          label.delete(londonHighSweepLabel)
-     if not na(londonLowSweepLabel)
-          label.delete(londonLowSweepLabel)
-     if not na(nyHighSweepLabel)
-          label.delete(nyHighSweepLabel)
-     if not na(nyLowSweepLabel)
-          label.delete(nyLowSweepLabel)
-
-
-// ===== ASIA HIGH SWEEP DETECTION =====
-if showSweepAsia and not na(asiaHigh) and not asiaHighSwept
-     bool wickAboveAsiaHigh = high > asiaHigh + (minPenetration * syminfo.mintick)
-     
-     if wickAboveAsiaHigh
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] < asiaHigh
-                   int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(asiaHighSweepLabel)
-                         asiaHighSweepLabel := label.new(
-                              bar_index - i,
-                              asiaHigh,
-                              text="SWP",
-                              color=color.blue,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="Asia High Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    asiaHighSwept := true
-                    break
-
-
-// ===== ASIA LOW SWEEP DETECTION =====
-if showSweepAsia and not na(asiaLow) and not asiaLowSwept
-     bool wickBelowAsiaLow = low < asiaLow - (minPenetration * syminfo.mintick)
-     
-     if wickBelowAsiaLow
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] > asiaLow
-                    int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(asiaLowSweepLabel)
-                         asiaLowSweepLabel := label.new(
-                              bar_index - i,
-                              asiaLow,
-                              text="SWP",
-                              color=color.blue,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="Asia Low Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    asiaLowSwept := true
-                    break
-
-
-// ===== LONDON HIGH SWEEP DETECTION =====
-if showSweepLondon and not na(londonHigh) and not londonHighSwept
-     bool wickAboveLondonHigh = high > londonHigh + (minPenetration * syminfo.mintick)
-     
-     if wickAboveLondonHigh
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] < londonHigh
-                    int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(londonHighSweepLabel)
-                         londonHighSweepLabel := label.new(
-                              bar_index - i,
-                              londonHigh,
-                              text="SWP",
-                              color=color.green,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="London High Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    londonHighSwept := true
-                    break
-
-
-// ===== LONDON LOW SWEEP DETECTION =====
-if showSweepLondon and not na(londonLow) and not londonLowSweptc
-     bool wickBelowLondonLow = low < londonLow - (minPenetration * syminfo.mintick)
-     
-     if wickBelowLondonLow
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] > londonLow
-                    int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(londonLowSweepLabel)
-                         londonLowSweepLabel := label.new(
-                              bar_index - i,
-                              londonLow,
-                              text="SWP",
-                              color=color.green,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="London Low Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    londonLowSwept := true
-                    break
-
-
-// ===== NEW YORK HIGH SWEEP DETECTION =====
-if showSweepNY and not na(nyHigh) and not nyHighSwept
-     bool wickAboveNYHigh = high > nyHigh + (minPenetration * syminfo.mintick)
-     
-     if wickAboveNYHigh
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] < nyHigh
-                    int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(nyHighSweepLabel)
-                         nyHighSweepLabel := label.new(
-                              bar_index - i,
-                              nyHigh,
-                              text="SWP",
-                              color=color.red,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="New York High Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    nyHighSwept := true
-                    break
-
-
-// ===== NEW YORK LOW SWEEP DETECTION =====
-if showSweepNY and not na(nyLow) and not nyLowSwept
-     bool wickBelowNYLow = low < nyLow - (minPenetration * syminfo.mintick)
-     
-     if wickBelowNYLow
-          for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
-               if close[i] > nyLow
-                    int score = 1
-                    string trendBias = "Neutral"
-                    
-                    if useTrendFilter
-                        if close > ema200
-                            trendBias := "Bullish"
-                        else
-                            trendBias := "Bearish"
-                    
-                    if na(nyLowSweepLabel)
-                         nyLowSweepLabel := label.new(
-                              bar_index - i,
-                              nyLow,
-                              text="SWP",
-                              color=color.red,
-                              textcolor=color.white,
-                              style=label.style_center,
-                              size=size.small,
-                              tooltip="New York Low Sweep\nScore: " + str.tostring(score) + "\nTrend: " + trendBias)
-                    
-                    nyLowSwept := true
-                    break
-
-
-//====================================================
-// END EDGEFLOW v0.3.1
-//====================================================
+// Ejecución centralizada y limpia del motor unificado
+updateDynamicLiquidityAndLabels(asia, asiaColor, "Asia")
+updateDynamicLiquidityAndLabels(london, londonColor, "London")
