@@ -821,21 +821,19 @@ if newDay and not showHistoricalSweeps
 
 // ===== ASIA HIGH SWEEP DETECTION =====
 if showSweepAsia and not na(asiaHigh) and not asiaHighSwept
-     wickAboveAsiaHigh = high > asiaHigh + (minPenetration * syminfo.mintick)
+     bool wickAboveAsiaHigh = high > asiaHigh + (minPenetration * syminfo.mintick)
      
      if wickAboveAsiaHigh
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] < asiaHigh
-                    score = 1
-                    if close[i] < asiaHigh
-                         score := 2
+                   int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(asiaHighSweepLabel)
                          asiaHighSweepLabel := label.new(
@@ -854,21 +852,19 @@ if showSweepAsia and not na(asiaHigh) and not asiaHighSwept
 
 // ===== ASIA LOW SWEEP DETECTION =====
 if showSweepAsia and not na(asiaLow) and not asiaLowSwept
-     wickBelowAsiaLow = low < asiaLow - (minPenetration * syminfo.mintick)
+     bool wickBelowAsiaLow = low < asiaLow - (minPenetration * syminfo.mintick)
      
      if wickBelowAsiaLow
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] > asiaLow
-                    score = 1
-                    if close[i] > asiaLow
-                         score := 2
+                    int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(asiaLowSweepLabel)
                          asiaLowSweepLabel := label.new(
@@ -887,21 +883,19 @@ if showSweepAsia and not na(asiaLow) and not asiaLowSwept
 
 // ===== LONDON HIGH SWEEP DETECTION =====
 if showSweepLondon and not na(londonHigh) and not londonHighSwept
-     wickAboveLondonHigh = high > londonHigh + (minPenetration * syminfo.mintick)
+     bool wickAboveLondonHigh = high > londonHigh + (minPenetration * syminfo.mintick)
      
      if wickAboveLondonHigh
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] < londonHigh
-                    score = 1
-                    if close[i] < londonHigh
-                         score := 2
+                    int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(londonHighSweepLabel)
                          londonHighSweepLabel := label.new(
@@ -919,22 +913,20 @@ if showSweepLondon and not na(londonHigh) and not londonHighSwept
 
 
 // ===== LONDON LOW SWEEP DETECTION =====
-if showSweepLondon and not na(londonLow) and not londonLowSwept
-     wickBelowLondonLow = low < londonLow - (minPenetration * syminfo.mintick)
+if showSweepLondon and not na(londonLow) and not londonLowSweptc
+     bool wickBelowLondonLow = low < londonLow - (minPenetration * syminfo.mintick)
      
      if wickBelowLondonLow
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] > londonLow
-                    score = 1
-                    if close[i] > londonLow
-                         score := 2
+                    int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(londonLowSweepLabel)
                          londonLowSweepLabel := label.new(
@@ -953,21 +945,19 @@ if showSweepLondon and not na(londonLow) and not londonLowSwept
 
 // ===== NEW YORK HIGH SWEEP DETECTION =====
 if showSweepNY and not na(nyHigh) and not nyHighSwept
-     wickAboveNYHigh = high > nyHigh + (minPenetration * syminfo.mintick)
+     bool wickAboveNYHigh = high > nyHigh + (minPenetration * syminfo.mintick)
      
      if wickAboveNYHigh
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] < nyHigh
-                    score = 1
-                    if close[i] < nyHigh
-                         score := 2
+                    int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(nyHighSweepLabel)
                          nyHighSweepLabel := label.new(
@@ -986,21 +976,19 @@ if showSweepNY and not na(nyHigh) and not nyHighSwept
 
 // ===== NEW YORK LOW SWEEP DETECTION =====
 if showSweepNY and not na(nyLow) and not nyLowSwept
-     wickBelowNYLow = low < nyLow - (minPenetration * syminfo.mintick)
+     bool wickBelowNYLow = low < nyLow - (minPenetration * syminfo.mintick)
      
      if wickBelowNYLow
           for i = 0 to math.min(maxSweepCandles - 1, bar_index - 1)
                if close[i] > nyLow
-                    score = 1
-                    if close[i] > nyLow
-                         score := 2
+                    int score = 1
+                    string trendBias = "Neutral"
                     
-                    trendBias = "Neutral"
                     if useTrendFilter
-                         if close > ema200
-                              trendBias := "Bullish"
-                         else
-                              trendBias := "Bearish"
+                        if close > ema200
+                            trendBias := "Bullish"
+                        else
+                            trendBias := "Bearish"
                     
                     if na(nyLowSweepLabel)
                          nyLowSweepLabel := label.new(
@@ -1019,4 +1007,4 @@ if showSweepNY and not na(nyLow) and not nyLowSwept
 
 //====================================================
 // END EDGEFLOW v0.3.1
-//====================================================/
+//====================================================
