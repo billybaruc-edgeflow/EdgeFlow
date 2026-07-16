@@ -113,12 +113,12 @@ var int nyLowBar = na
 // RESET DAILY VALUES
 //====================================================
 if newDay and not showHistorical
-    asiaHigh   := na
-    asiaLow    := na
+    asiaHigh := na
+    asiaLow := na
     londonHigh := na
-    londonLow  := na
-    nyHigh     := na
-    nyLow      := na
+    londonLow := na
+    nyHigh := na
+    nyLow := na
 
 //====================================================
 // CAPTURE ASIA
@@ -176,8 +176,6 @@ if showNY
         if low < nyLow
             nyLow := low
             nyLowBar := bar_index
-
-
 
 
 
