@@ -1,431 +1,118 @@
-//@version=6
-indicator(
-     "EdgeFlow v0.2.1",
-     shorttitle="EdgeFlow",
-     overlay=true,
-     max_lines_count=500,
-     max_labels_count=500)
-
+//@version=6 
+indicator("EdgeFlow v0.4.0", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 100)
 
 //====================================================
-// EdgeFlow
-// Version : v0.2.1
-// Sprint  : 02 HOTFIX
-//
-// Changes:
-// - Intraday liquidity levels
-// - Dotted session levels
-// - Daily reset
-// - NY close cleanup
-//
-// Modules:
-// - EMA Engine
-// - Session Engine
-// - Session Liquidity Engine
+// EDGEFLOW v0.4.0
+// CORE ENGINE
 //====================================================
 
-
-
 //====================================================
-// INPUTS
+// GENERAL SETTINGS
 //====================================================
 
+groupGeneral = "General"
 
-
-//----------------------------------------------------
-// EMA ENGINE
-//----------------------------------------------------
-
-groupEMA = "📈 EMA Engine"
-
-
-
-showEMA10 = input.bool(
-     true,
-     "Mostrar EMA 10",
-     group=groupEMA)
-
-
-
-showEMA21 = input.bool(
-     true,
-     "Mostrar EMA 21",
-     group=groupEMA)
-
-
-
-showEMA200 = input.bool(
-     true,
-     "Mostrar EMA 200",
-     group=groupEMA)
-
-
-
-ema10Color = input.color(
-     color.orange,
-     "Color EMA 10",
-     group=groupEMA)
-
-
-
-ema21Color = input.color(
-     color.blue,
-     "Color EMA 21",
-     group=groupEMA)
-
-
-
-ema200Color = input.color(
-     color.red,
-     "Color EMA 200",
-     group=groupEMA)
-
-
-
-emaWidth = input.int(
-     2,
-     "Grosor EMA",
-     minval=1,
-     maxval=5,
-     group=groupEMA)
-
-
+showHistorical = input.bool(false, "Show Historical Sessions", group = groupGeneral)
+showLabels     = input.bool(true, "Show Labels", group = groupGeneral)
+showDashboard  = input.bool(false, "Show Dashboard", group = groupGeneral)
 
 //====================================================
-// SESSION ENGINE
+// EMA ENGINE SETTINGS
 //====================================================
 
+groupEMA = "Moving Averages"
 
-groupSession = "🌎 Session Engine"
-
-
-
-sessionTimezone = input.string(
-     "America/New_York",
-     "Zona horaria",
-     group=groupSession)
-
-
-
-// Asia
-
-showAsia = input.bool(
-     true,
-     "Mostrar Asia",
-     group=groupSession)
-
-
-
-asiaSession = input.session(
-     "0000-0900",
-     "Horario Asia",
-     group=groupSession)
-
-
-
-// Londres
-
-showLondon = input.bool(
-     true,
-     "Mostrar Londres",
-     group=groupSession)
-
-
-
-londonSession = input.session(
-     "0800-1700",
-     "Horario Londres",
-     group=groupSession)
-
-
-
-// Nueva York
-
-showNY = input.bool(
-     true,
-     "Mostrar Nueva York",
-     group=groupSession)
-
-
-
-nySession = input.session(
-     "0930-1600",
-     "Horario Nueva York",
-     group=groupSession)
-
-
-
+showEMA10  = input.bool(true, "EMA 10", group = groupEMA)
+showEMA21  = input.bool(true, "EMA 21", group = groupEMA)
+showEMA200 = input.bool(true, "EMA 200", group = groupEMA)
 
 //====================================================
-// LIQUIDITY ENGINE
+// SESSION SETTINGS
 //====================================================
 
+groupSessions = "Trading Sessions"
 
-groupLiquidity = "💧 Session Liquidity Engine"
+showAsia   = input.bool(true, "Asia", group = groupSessions)
+showLondon = input.bool(true, "London", group = groupSessions)
+showNY     = input.bool(true, "New York", group = groupSessions)
 
+// Horarios (Chile)
+asiaSession   = input.session("2000-0600", "Asia", group = groupSessions)
+londonSession = input.session("0400-0900", "London", group = groupSessions)
+nySession     = input.session("0930-1700", "New York", group = groupSessions)
 
+//====================================================
+// COLORS
+//====================================================
 
-showLiquidity = input.bool(
-     true,
-     "Mostrar High / Low",
-     group=groupLiquidity)
+groupColors = "Colors"
 
+asiaColor   = input.color(color.rgb(0,180,255), "Asia", group = groupColors)
+londonColor = input.color(color.rgb(255,170,0), "London", group = groupColors)
+nyColor     = input.color(color.rgb(255,70,70), "New York", group = groupColors)
 
+//====================================================
+// SWEEP SETTINGS
+//====================================================
 
-showLabels = input.bool(
-     true,
-     "Mostrar etiquetas",
-     group=groupLiquidity)
+groupSweep = "Liquidity Sweep"
 
+enableSweep = input.bool(true, "Enable Sweep Detection", group = groupSweep)
 
+barsToConfirm = input.int(
+     3,
+     "Confirmation Bars",
+     minval = 1,
+     maxval = 10,
+     group = groupSweep)
 
-lineWidth = input.int(
+minPenetration = input.int(
      1,
-     "Grosor líneas",
-     minval=1,
-     maxval=3,
-     group=groupLiquidity)
+     "Minimum Penetration (Ticks)",
+     minval = 1,
+     group = groupSweep)
 
 
-
-showHistorical = input.bool(
-     false,
-     "Mantener histórico",
-     group=groupLiquidity)
-
-
+maxReturnBars = input.int(
+     3,
+     "Maximum Return Bars",
+     minval = 1,
+     maxval = 20,
+     group = "EdgeFlow - Sweep")
 
 //====================================================
-// EMA ENGINE
+// GLOBAL VARIABLES
 //====================================================
 
-
-ema10 = ta.ema(close,10)
-
-ema21 = ta.ema(close,21)
-
-ema200 = ta.ema(close,200)
-
-
-
-plot(
-     showEMA10 ? ema10 : na,
-     "EMA 10",
-     color=ema10Color,
-     linewidth=emaWidth)
-
-
-
-plot(
-     showEMA21 ? ema21 : na,
-     "EMA 21",
-     color=ema21Color,
-     linewidth=emaWidth)
-
-
-
-plot(
-     showEMA200 ? ema200 : na,
-     "EMA 200",
-     color=ema200Color,
-     linewidth=emaWidth)
-
-
-
-//====================================================
-// SESSION DETECTION
-//====================================================
-
-
-inAsia = not na(
-     time(
-          timeframe.period,
-          asiaSession,
-          sessionTimezone))
-
-
-inLondon = not na(
-     time(
-          timeframe.period,
-          londonSession,
-          sessionTimezone))
-
-
-inNY = not na(
-     time(
-          timeframe.period,
-          nySession,
-          sessionTimezone))
-
-
-
-//====================================================
-// NEW DAY CONTROL
-//====================================================
-
-
-newDay = ta.change(
-     time("D")) != 0
-
-
-
-//====================================================
-// SESSION VARIABLES
-//====================================================
-
-
-
-//-------------------------
-// ASIA
-//-------------------------
-
+// Session Prices
 var float asiaHigh = na
 var float asiaLow = na
-
-var int asiaStartBar = na
-
-
-
-//-------------------------
-// LONDON
-//-------------------------
 
 var float londonHigh = na
 var float londonLow = na
 
-var int londonStartBar = na
-
-
-
-//-------------------------
-// NEW YORK
-//-------------------------
-
 var float nyHigh = na
 var float nyLow = na
 
+// Session Bar Index
+
+var int asiaStartBar = na
+var int londonStartBar = na
 var int nyStartBar = na
 
+var int asiaHighBar = na
+var int asiaLowBar = na
+
+var int londonHighBar = na
+var int londonLowBar = na
+
+var int nyHighBar = na
+var int nyLowBar = na
 
 
 //====================================================
-// RESET DAILY VALUES
+// DRAW OBJECTS
 //====================================================
-
-
-if newDay and not showHistorical
-
-    asiaHigh := na
-    asiaLow := na
-
-    londonHigh := na
-    londonLow := na
-
-    nyHigh := na
-    nyLow := na
-
-
-
-//====================================================
-// CAPTURE ASIA
-//====================================================
-
-
-if showAsia
-
-    if inAsia and not inAsia[1]
-
-        asiaHigh := high
-        asiaLow := low
-        asiaStartBar := bar_index
-
-
-    if inAsia
-
-        asiaHigh := math.max(
-             asiaHigh,
-             high)
-
-
-        asiaLow := math.min(
-             asiaLow,
-             low)
-
-
-
-//====================================================
-// CAPTURE LONDON
-//====================================================
-
-
-if showLondon
-
-    if inLondon and not inLondon[1]
-
-        londonHigh := high
-        londonLow := low
-        londonStartBar := bar_index
-
-
-    if inLondon
-
-        londonHigh := math.max(
-             londonHigh,
-             high)
-
-
-        londonLow := math.min(
-             londonLow,
-             low)
-
-
-
-//====================================================
-// CAPTURE NEW YORK
-//====================================================
-
-
-if showNY
-
-    if inNY and not inNY[1]
-
-        nyHigh := high
-        nyLow := low
-        nyStartBar := bar_index
-
-
-    if inNY
-
-        nyHigh := math.max(
-             nyHigh,
-             high)
-
-
-        nyLow := math.min(
-             nyLow,
-             low)
-
-
-
-//====================================================
-// SESSION CLOSE EVENTS
-//====================================================
-
-
-asiaFinished = not inAsia and inAsia[1]
-
-londonFinished = not inLondon and inLondon[1]
-
-nyFinished = not inNY and inNY[1]
-
-
-
-//====================================================
-// LIQUIDITY VISUAL ENGINE v0.2.1
-//====================================================
-
-
-// Variables de líneas actuales
 
 var line asiaHighLine = na
 var line asiaLowLine = na
@@ -436,9 +123,9 @@ var line londonLowLine = na
 var line nyHighLine = na
 var line nyLowLine = na
 
-
-
-// Etiquetas
+//====================================================
+// LABEL OBJECTS
+//====================================================
 
 var label asiaHighLabel = na
 var label asiaLowLabel = na
@@ -449,14 +136,282 @@ var label londonLowLabel = na
 var label nyHighLabel = na
 var label nyLowLabel = na
 
+//====================================================
+// LIQUIDITY STATE
+//====================================================
+
+var bool asiaHighActive = false
+var bool asiaLowActive = false
+
+var bool londonHighActive = false
+var bool londonLowActive = false
+
+var bool nyHighActive = false
+var bool nyLowActive = false
+
+//====================================================
+// LIQUIDITY STATES
+//====================================================
+
+const int STATE_ACTIVE      = 0
+const int STATE_TOUCHED     = 1
+const int STATE_BREAKING    = 2
+const int STATE_RETURNING   = 3
+const int STATE_SWEPT       = 4
+const int STATE_CONFIRMED   = 5
+const int STATE_INVALIDATED = 6
+
+//====================================================
+// UTILITY ENGINE v2.0
+//====================================================
+
+//----------------------------------------------------
+// Incrementa un contador únicamente cuando el estado
+// coincide con el estado objetivo.
+//----------------------------------------------------
+incrementCounter(state, counter, targetState) =>
+    state == targetState ? nz(counter, 0) + 1 : counter
+
+//----------------------------------------------------
+// Verifica si el contador continúa dentro de la ventana
+// permitida.
+//----------------------------------------------------
+isInsideReturnWindow(counter, maxBars) =>
+    not na(counter) and counter <= maxBars
+
+//====================================================
+// BREAKING BAR COUNTERS
+//====================================================
+
+// Asia
+var int asiaHighBreakingBars = na
+var int asiaLowBreakingBars  = na
+
+// London
+var int londonHighBreakingBars = na
+var int londonLowBreakingBars  = na
+
+// New York
+var int nyHighBreakingBars = na
+var int nyLowBreakingBars  = na
+
+//-------------------------
+// ASIA
+//-------------------------
+
+var int asiaHighState = STATE_ACTIVE
+var int asiaLowState  = STATE_ACTIVE
+
+//-------------------------
+// LONDON
+//-------------------------
+
+var int londonHighState = STATE_ACTIVE
+var int londonLowState  = STATE_ACTIVE
+
+//-------------------------
+// NEW YORK
+//-------------------------
+
+var int nyHighState = STATE_ACTIVE
+var int nyLowState  = STATE_ACTIVE
+
+//====================================================
+// END MODULE 1
+//====================================================
+
+//====================================================
+// MODULE 2
+// EMA ENGINE
+//====================================================
+
+ema10 = ta.ema(close, 10)
+ema21 = ta.ema(close, 21)
+ema200 = ta.ema(close, 200)
+
+plot(
+     showEMA10 ? ema10 : na,
+     title="EMA 10",
+     color=color.rgb(0,170,255),
+     linewidth=2)
+
+plot(
+     showEMA21 ? ema21 : na,
+     title="EMA 21",
+     color=color.rgb(255,210,0),
+     linewidth=2)
+
+plot(
+     showEMA200 ? ema200 : na,
+     title="EMA 200",
+     color=color.rgb(255,110,90),
+     linewidth=3)
+
 
 
 //====================================================
-// DAILY CLEANUP
+// MODULE 3
+// SESSION ENGINE
 //====================================================
 
+// Session Detection
+inAsia   = not na(time(timeframe.period, asiaSession))
+inLondon = not na(time(timeframe.period, londonSession))
+inNY     = not na(time(timeframe.period, nySession))
 
+// Session Start
+asiaStarted   = inAsia and not inAsia[1]
+londonStarted = inLondon and not inLondon[1]
+nyStarted     = inNY and not inNY[1]
+
+// Session End
+asiaFinished   = not inAsia and inAsia[1]
+londonFinished = not inLondon and inLondon[1]
+nyFinished     = not inNY and inNY[1]
+
+// New Trading Day
+bool newDay = ta.change(time("D")) != 0
+
+// Reset Variables
 if newDay and not showHistorical
+    asiaHigh := na
+    asiaLow := na
+
+    londonHigh := na
+    londonLow := na
+
+    nyHigh := na
+    nyLow := na
+
+    asiaStartBar := na
+    londonStartBar := na
+    nyStartBar := na
+
+    asiaHighBar := na
+    asiaLowBar := na
+
+    londonHighBar := na
+    londonLowBar := na
+
+    nyHighBar := na
+    nyLowBar := na
+
+
+//====================================================
+// MODULE 4
+// SESSION HIGH / LOW ENGINE
+//====================================================
+
+
+//=========================
+// ASIA
+//=========================
+
+
+if asiaStarted
+    asiaHighBreakingBars := na
+    asiaLowBreakingBars := na
+
+    //-------------------------
+    // RESET LIQUIDITY STATES
+    //-------------------------
+
+    asiaHighState := STATE_ACTIVE
+    asiaLowState  := STATE_ACTIVE
+    asiaHighBreakingBars := na
+    asiaLowBreakingBars := na
+    asiaLowBreakingBars := na
+    asiaHigh := high
+    asiaLow := low
+
+    asiaStartBar := bar_index
+    asiaHighBar := bar_index
+    asiaLowBar := bar_index
+
+if inAsia
+    if high > asiaHigh
+        asiaHigh := high
+        asiaHighBar := bar_index
+
+    if low < asiaLow
+        asiaLow := low
+        asiaLowBar := bar_index
+
+//=========================
+// LONDON
+//=========================
+
+if londonStarted
+
+    //-------------------------
+    // RESET LIQUIDITY STATES
+    //-------------------------
+
+    londonHighBreakingBars := na
+    londonLowBreakingBars := na
+
+    londonHighState := STATE_ACTIVE
+    londonLowState  := STATE_ACTIVE
+    londonHighBreakingBars := na
+    londonLowBreakingBars := na
+    londonLowBreakingBars := na
+    londonHigh := high
+    londonLow := low
+
+    londonStartBar := bar_index
+    londonHighBar := bar_index
+    londonLowBar := bar_index
+
+if inLondon
+    if high > londonHigh
+        londonHigh := high
+        londonHighBar := bar_index
+
+    if low < londonLow
+        londonLow := low
+        londonLowBar := bar_index
+
+//=========================
+// NEW YORK
+//=========================
+
+if nyStarted
+
+    //-------------------------
+    // RESET LIQUIDITY STATES
+    //-------------------------
+
+    nyHighBreakingBars := na
+    nyLowBreakingBars := na
+
+    nyHighState := STATE_ACTIVE
+    nyLowState  := STATE_ACTIVE
+    nyHighBreakingBars := na
+    nyLowBreakingBars := na
+    nyLowBreakingBars := na
+    nyHigh := high
+    nyLow := low
+
+    nyStartBar := bar_index
+    nyHighBar := bar_index
+    nyLowBar := bar_index
+
+if inNY
+
+    if na(nyHigh) or high > nyHigh
+        nyHigh := high
+        nyHighBar := bar_index
+
+    if na(nyLow) or low < nyLow
+        nyLow := low
+        nyLowBar := bar_index
+
+
+//====================================================
+// ASIA DRAW ENGINE
+//====================================================
+
+if asiaStarted
 
     if not na(asiaHighLine)
         line.delete(asiaHighLine)
@@ -464,6 +419,60 @@ if newDay and not showHistorical
     if not na(asiaLowLine)
         line.delete(asiaLowLine)
 
+    if not na(asiaHighLabel)
+        label.delete(asiaHighLabel)
+
+    if not na(asiaLowLabel)
+        label.delete(asiaLowLabel)
+
+    asiaHighLine := line.new(
+        x1 = bar_index,
+        y1 = high,
+        x2 = bar_index,
+        y2 = high,
+        xloc = xloc.bar_index,
+        color = asiaColor,
+        style = line.style_dashed,
+        width = 2)
+
+    asiaLowLine := line.new(
+        x1 = bar_index,
+        y1 = low,
+        x2 = bar_index,
+        y2 = low,
+        xloc = xloc.bar_index,
+        color = asiaColor,
+        style = line.style_dashed,
+        width = 2)
+
+    asiaHighLabel := label.new(
+        x = bar_index + 2,
+        y = high,
+        text = "ASIA HIGH",
+        xloc = xloc.bar_index,
+        style = label.style_label_lower_left,
+        textcolor = asiaColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    asiaLowLabel := label.new(
+        x = bar_index + 2,
+        y = low,
+        text = "ASIA LOW",
+        xloc = xloc.bar_index,
+        style = label.style_label_upper_left,
+        textcolor = asiaColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    asiaHighActive := true
+    asiaLowActive := true
+
+//====================================================
+// LONDON DRAW ENGINE
+//====================================================
+
+if londonStarted
 
     if not na(londonHighLine)
         line.delete(londonHighLine)
@@ -471,6 +480,60 @@ if newDay and not showHistorical
     if not na(londonLowLine)
         line.delete(londonLowLine)
 
+    if not na(londonHighLabel)
+        label.delete(londonHighLabel)
+
+    if not na(londonLowLabel)
+        label.delete(londonLowLabel)
+
+    londonHighLine := line.new(
+        x1 = bar_index,
+        y1 = high,
+        x2 = bar_index,
+        y2 = high,
+        xloc = xloc.bar_index,
+        color = londonColor,
+        style = line.style_dashed,
+        width = 2)
+
+    londonLowLine := line.new(
+        x1 = bar_index,
+        y1 = low,
+        x2 = bar_index,
+        y2 = low,
+        xloc = xloc.bar_index,
+        color = londonColor,
+        style = line.style_dashed,
+        width = 2)
+
+    londonHighLabel := label.new(
+        x = bar_index + 2,
+        y = high,
+        text = "LONDON HIGH",
+        xloc = xloc.bar_index,
+        style = label.style_label_lower_left,
+        textcolor = londonColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    londonLowLabel := label.new(
+        x = bar_index + 2,
+        y = low,
+        text = "LONDON LOW",
+        xloc = xloc.bar_index,
+        style = label.style_label_upper_left,
+        textcolor = londonColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    londonHighActive := true
+    londonLowActive := true
+
+//====================================================
+// NEW YORK DRAW ENGINE
+//====================================================
+
+if nyStarted
 
     if not na(nyHighLine)
         line.delete(nyHighLine)
@@ -478,126 +541,290 @@ if newDay and not showHistorical
     if not na(nyLowLine)
         line.delete(nyLowLine)
 
-
-
-    if not na(asiaHighLabel)
-        label.delete(asiaHighLabel)
-
-    if not na(asiaLowLabel)
-        label.delete(asiaLowLabel)
-
-
-    if not na(londonHighLabel)
-        label.delete(londonHighLabel)
-
-    if not na(londonLowLabel)
-        label.delete(londonLowLabel)
-
-
     if not na(nyHighLabel)
         label.delete(nyHighLabel)
 
     if not na(nyLowLabel)
         label.delete(nyLowLabel)
 
+    nyHighLine := line.new(
+        x1 = bar_index,
+        y1 = high,
+        x2 = bar_index,
+        y2 = high,
+        xloc = xloc.bar_index,
+        color = nyColor,
+        style = line.style_dashed,
+        width = 2)
+
+    nyLowLine := line.new(
+        x1 = bar_index,
+        y1 = low,
+        x2 = bar_index,
+        y2 = low,
+        xloc = xloc.bar_index,
+        color = nyColor,
+        style = line.style_dashed,
+        width = 2)
+
+    nyHighLabel := label.new(
+        x = bar_index + 2,
+        y = high,
+        text = "NEW YORK HIGH",
+        xloc = xloc.bar_index,
+        style = label.style_label_lower_left,
+        textcolor = nyColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    nyLowLabel := label.new(
+        x = bar_index + 2,
+        y = low,
+        text = "NEW YORK LOW",
+        xloc = xloc.bar_index,
+        style = label.style_label_upper_left,
+        textcolor = nyColor,
+        color = color.new(color.black, 100),
+        size = size.small)
+
+    nyHighActive := true
+    nyLowActive := true
 
 
 //====================================================
-// UPDATE SESSION LEVELS
+// DYNAMIC LABEL UPDATE
 //====================================================
 
+//-------------------------
 // ASIA
-if showLiquidity and not na(asiaHigh)
+//-------------------------
 
-    if na(asiaHighLine)
-        asiaHighLine := line.new(bar_index, asiaHigh, bar_index, asiaHigh,
-             color=color.blue,
-             style=line.style_dotted,
-             width=lineWidth)
+if asiaHighActive and inAsia and not na(asiaHighLine)
 
-    line.set_xy1(asiaHighLine, asiaStartBar, asiaHigh)
-    line.set_xy2(asiaHighLine, bar_index, asiaHigh)
+    line.set_x2(asiaHighLine, bar_index)
+    line.set_y1(asiaHighLine, asiaHigh)
+    line.set_y2(asiaHighLine, asiaHigh)
 
+    label.set_x(asiaHighLabel, bar_index + 2)
+    label.set_y(asiaHighLabel, asiaHigh)
 
-    if na(asiaLowLine)
-        asiaLowLine := line.new(bar_index, asiaLow, bar_index, asiaLow,
-             color=color.blue,
-             style=line.style_dotted,
-             width=lineWidth)
+if asiaLowActive and inAsia and not na(asiaLowLine)
 
-    line.set_xy1(asiaLowLine, asiaStartBar, asiaLow)
-    line.set_xy2(asiaLowLine, bar_index, asiaLow)
+    line.set_x2(asiaLowLine, bar_index)
+    line.set_y1(asiaLowLine, asiaLow)
+    line.set_y2(asiaLowLine, asiaLow)
 
+    label.set_x(asiaLowLabel, bar_index + 2)
+    label.set_y(asiaLowLabel, asiaLow)
 
+//-------------------------
 // LONDON
-if showLiquidity and not na(londonHigh)
+//-------------------------
 
-    if na(londonHighLine)
-        londonHighLine := line.new(bar_index, londonHigh, bar_index, londonHigh,
-             color=color.green,
-             style=line.style_dotted,
-             width=lineWidth)
+if londonHighActive and inLondon and not na(londonHighLine)
 
-    line.set_xy1(londonHighLine, londonStartBar, londonHigh)
-    line.set_xy2(londonHighLine, bar_index, londonHigh)
+    line.set_x2(londonHighLine, bar_index)
+    line.set_y1(londonHighLine, londonHigh)
+    line.set_y2(londonHighLine, londonHigh)
 
+    label.set_x(londonHighLabel, bar_index + 2)
+    label.set_y(londonHighLabel, londonHigh)
 
-    if na(londonLowLine)
-        londonLowLine := line.new(bar_index, londonLow, bar_index, londonLow,
-             color=color.green,
-             style=line.style_dotted,
-             width=lineWidth)
+if londonLowActive and inLondon and not na(londonLowLine)
 
-    line.set_xy1(londonLowLine, londonStartBar, londonLow)
-    line.set_xy2(londonLowLine, bar_index, londonLow)
+    line.set_x2(londonLowLine, bar_index)
+    line.set_y1(londonLowLine, londonLow)
+    line.set_y2(londonLowLine, londonLow)
 
+    label.set_x(londonLowLabel, bar_index + 2)
+    label.set_y(londonLowLabel, londonLow)
 
+//-------------------------
 // NEW YORK
-if showLiquidity and not na(nyHigh)
+//-------------------------
 
-    if na(nyHighLine)
-        nyHighLine := line.new(bar_index, nyHigh, bar_index, nyHigh,
-             color=color.red,
-             style=line.style_dotted,
-             width=lineWidth)
+if nyHighActive and inNY and not na(nyHighLine)
 
-    line.set_xy1(nyHighLine, nyStartBar, nyHigh)
-    line.set_xy2(nyHighLine, bar_index, nyHigh)
+    line.set_x2(nyHighLine, bar_index)
+    line.set_y1(nyHighLine, nyHigh)
+    line.set_y2(nyHighLine, nyHigh)
 
+    label.set_x(nyHighLabel, bar_index + 2)
+    label.set_y(nyHighLabel, nyHigh)
 
-    if na(nyLowLine)
-        nyLowLine := line.new(bar_index, nyLow, bar_index, nyLow,
-             color=color.red,
-             style=line.style_dotted,
-             width=lineWidth)
+if nyLowActive and inNY and not na(nyLowLine)
 
-    line.set_xy1(nyLowLine, nyStartBar, nyLow)
-    line.set_xy2(nyLowLine, bar_index, nyLow)
+    line.set_x2(nyLowLine, bar_index)
+    line.set_y1(nyLowLine, nyLow)
+    line.set_y2(nyLowLine, nyLow)
 
+    label.set_x(nyLowLabel, bar_index + 2)
+    label.set_y(nyLowLabel, nyLow)
 
 
 //====================================================
-// EXTEND LEVELS DURING NY SESSION
+// LIQUIDITY EVENT ENGINE v1.0
 //====================================================
 
+//-------------------------
+// ASIA HIGH
+//-------------------------
 
-if inNY and showLiquidity
+if asiaHighState == STATE_ACTIVE and high >= asiaHigh
+    asiaHighState := STATE_TOUCHED
 
-    if not na(asiaHighLine)
-        line.set_x2(asiaHighLine, bar_index)
+//-------------------------
+// ASIA LOW
+//-------------------------
 
-    if not na(asiaLowLine)
-        line.set_x2(asiaLowLine, bar_index)
+if asiaLowState == STATE_ACTIVE and low <= asiaLow
+    asiaLowState := STATE_TOUCHED
 
+//-------------------------
+// LONDON HIGH
+//-------------------------
 
-    if not na(londonHighLine)
-        line.set_x2(londonHighLine, bar_index)
+if londonHighState == STATE_ACTIVE and high >= londonHigh
+    londonHighState := STATE_TOUCHED
 
-    if not na(londonLowLine)
-        line.set_x2(londonLowLine, bar_index)
+//-------------------------
+// LONDON LOW
+//-------------------------
 
+if londonLowState == STATE_ACTIVE and low <= londonLow
+    londonLowState := STATE_TOUCHED
+
+//-------------------------
+// NEW YORK HIGH
+//-------------------------
+
+if nyHighState == STATE_ACTIVE and high >= nyHigh
+    nyHighState := STATE_TOUCHED
+
+//-------------------------
+// NEW YORK LOW
+//-------------------------
+
+if nyLowState == STATE_ACTIVE and low <= nyLow
+    nyLowState := STATE_TOUCHED
 
 
 //====================================================
-// END EDGEFLOW v0.2.1
+// BREAKING ENGINE v1.0
 //====================================================
+
+//-------------------------
+// ASIA HIGH
+//-------------------------
+
+if asiaHighState == STATE_TOUCHED and high > asiaHigh
+    asiaHighState := STATE_BREAKING
+    asiaHighBreakingBars := 0
+
+//-------------------------
+// ASIA LOW
+//-------------------------
+
+if asiaLowState == STATE_TOUCHED and low < asiaLow
+    asiaLowState := STATE_BREAKING
+    asiaLowBreakingBars := 0
+
+//-------------------------
+// LONDON HIGH
+//-------------------------
+
+if londonHighState == STATE_TOUCHED and high > londonHigh
+    londonHighState := STATE_BREAKING
+    londonHighBreakingBars := 0
+
+//-------------------------
+// LONDON LOW
+//-------------------------
+
+if londonLowState == STATE_TOUCHED and low < londonLow
+    londonLowState := STATE_BREAKING
+    londonLowBreakingBars := 0
+
+//-------------------------
+// NEW YORK HIGH
+//-------------------------
+
+if nyHighState == STATE_TOUCHED and high > nyHigh
+    nyHighState := STATE_BREAKING
+    nyHighBreakingBars := 0
+
+//-------------------------
+// NEW YORK LOW
+//-------------------------
+
+if nyLowState == STATE_TOUCHED and low < nyLow
+    nyLowState := STATE_BREAKING
+    nyLowBreakingBars := 0
+
+
+//====================================================
+// BREAKING BAR COUNTER ENGINE
+//====================================================
+
+// Asia
+asiaHighBreakingBars := incrementCounter(asiaHighState, asiaHighBreakingBars, STATE_BREAKING)
+asiaLowBreakingBars  := incrementCounter(asiaLowState, asiaLowBreakingBars, STATE_BREAKING)
+
+// London
+londonHighBreakingBars := incrementCounter(londonHighState, londonHighBreakingBars, STATE_BREAKING)
+londonLowBreakingBars  := incrementCounter(londonLowState, londonLowBreakingBars, STATE_BREAKING)
+
+// New York
+nyHighBreakingBars := incrementCounter(nyHighState, nyHighBreakingBars, STATE_BREAKING)
+nyLowBreakingBars  := incrementCounter(nyLowState, nyLowBreakingBars, STATE_BREAKING)
+
+//====================================================
+// RETURNING ENGINE v1.0
+//====================================================
+
+//-------------------------
+// ASIA HIGH
+//-------------------------
+
+if asiaHighState == STATE_BREAKING and close < asiaHigh
+    asiaHighState := STATE_RETURNING
+
+//-------------------------
+// ASIA LOW
+//-------------------------
+
+if asiaLowState == STATE_BREAKING and close > asiaLow
+    asiaLowState := STATE_RETURNING
+
+//-------------------------
+// LONDON HIGH
+//-------------------------
+
+if londonHighState == STATE_BREAKING and close < londonHigh
+    londonHighState := STATE_RETURNING
+
+//-------------------------
+// LONDON LOW
+//-------------------------
+
+if londonLowState == STATE_BREAKING and close > londonLow
+    londonLowState := STATE_RETURNING
+
+//-------------------------
+// NEW YORK HIGH
+//-------------------------
+
+if nyHighState == STATE_BREAKING and close < nyHigh
+    nyHighState := STATE_RETURNING
+
+//-------------------------
+// NEW YORK LOW
+//-------------------------
+
+if nyLowState == STATE_BREAKING and close > nyLow
+    nyLowState := STATE_RETURNING
+
+
+
+
+
